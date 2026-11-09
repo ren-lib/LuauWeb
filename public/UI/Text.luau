@@ -11,7 +11,8 @@ local function Text(props:props)
     Component.TextColor3 = props.textColor or Color3.fromRGB(255,255,255)
     Component.Parent = props.parentTo
     Component.Font = props.font or `Montserrat`
-    Component.AutomaticSize = Enum.AutomaticSize.XY
+    Component.AutomaticSize = Enum.AutomaticSize.Y
+    Component.Size = UDim2.fromScale(1, 0)
     Component.TextSize = props.textSize or 20
     Component.Text = props.text
 

@@ -1,13 +1,22 @@
 local LocalizationService = {
     welcome = {
-        ru = `ПРИВЕТ МИР`,
-        en = `HELLO WORLD`,
-        da = `HEJ VERDEN`,
+        ru = `Этот сайт написан на Luau.`,
+        en = `This website is built with Luau.`,
+        da = `Denne hjemmeside er bygget med Luau.`,
     },
     welcomeSubtitle = {
-        ru = `это тест локализации. Например это текст на русском!`,
-        en = `this is localization test. For example this text in engilish!`,
-    }
+        ru = `Удивлен? Скоро тут появится мое портфолио, наберись терпения...`,
+        en = `Surprised? My portfolio will be coming soon. Stay tuned and be patient...`,
+        da = `Overrasket? Min portfolio kommer snart. Hav lidt tålmodighed...`,
+    },
+    debris1 = {
+        ru = `твоя текущая локаль браузера: {Client.Language}`,
+        en = `your current browser locale: {Client.Language}`,
+    },
+    debris2 = {
+        ru = `твой размер экрана: {Client.ScreenSize.X}x{Client.ScreenSize.Y}`,
+        en = `your current screen size: {Client.ScreenSize.X}x{Client.ScreenSize.Y}`,
+    },
 }
 
 function LocalizationService.Get(name:string)

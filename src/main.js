@@ -14,6 +14,16 @@ import {
     vector2New,
     color3FromRGB
 } from "./instance.js";
+import {
+    createTween,
+    playTween,
+    pauseTween,
+    cancelTween,
+    destroyTween,
+    getTweenState,
+    connectTweenEvent,
+    disconnectTweenEvent
+} from "./tween.js";
 
 const app = document.querySelector("#app");
 app.innerHTML = "";
@@ -52,6 +62,15 @@ output.style.cssText = `
 app.appendChild(output);
 
 const state = await LuauState.createAsync({});
+state.env.set("__TaskWait", async (Seconds = 0) => {
+    const Start = performance.now();
+
+    await new Promise(resolve => {
+        setTimeout(resolve, Math.max(0, Seconds) * 1000);
+    });
+
+    return (performance.now() - Start) / 1000;
+}, true);
 
 state.env.set("__InstanceNew", createInstance, true);
 state.env.set("__SetProperty", setProperty, true);
@@ -173,6 +192,23 @@ state.env.set("__ClientLanguage", (navigator.language || "en-US").split("-")[0],
 
 state.env.set("__ClientGet", clientGet, true);
 state.env.set("__ClientSet", clientSet, true);
+
+state.env.set("__TweenCreate", (instanceId, info, goals) => {
+    return createTween(
+        instanceId,
+        serializeClientValue(info),
+        serializeClientValue(goals)
+    );
+}, true);
+
+state.env.set("__TweenPlay", playTween, true);
+state.env.set("__TweenPause", pauseTween, true);
+state.env.set("__TweenCancel", cancelTween, true);
+state.env.set("__TweenDestroy", destroyTween, true);
+state.env.set("__TweenGetState", getTweenState, true);
+
+state.env.set("__TweenConnectEvent", connectTweenEvent, true);
+state.env.set("__TweenDisconnectEvent", disconnectTweenEvent, true);
 
 let CurrentModulePath = "main.luau";
 
@@ -419,6 +455,34 @@ try {
         }
 
             Enum = {
+            EasingStyle = {
+    Linear = "Linear",
+    Sine = "Sine",
+    Back = "Back",
+    Quad = "Quad",
+    Cubic = "Cubic",
+    Quart = "Quart",
+    Quint = "Quint",
+    Bounce = "Bounce",
+    Elastic = "Elastic",
+    Exponential = "Exponential",
+    Circular = "Circular"
+},
+
+EasingDirection = {
+    In = "In",
+    Out = "Out",
+    InOut = "InOut"
+},
+
+PlaybackState = {
+    Begin = "Begin",
+    Delayed = "Delayed",
+    Playing = "Playing",
+    Paused = "Paused",
+    Completed = "Completed",
+    Cancelled = "Cancelled"
+},
             ScaleType = {
     Stretch = \`Stretch\`,
     Fit = \`Fit\`,
@@ -466,6 +530,119 @@ try {
             }
         }
 
+                TweenInfo = {}
+
+        function TweenInfo.new(Time, EasingStyle, EasingDirection, RepeatCount, Reverses, DelayTime)
+            return {
+                Time = Time == nil and 1 or Time,
+                EasingStyle = EasingStyle or Enum.EasingStyle.Quad,
+                EasingDirection = EasingDirection or Enum.EasingDirection.Out,
+                RepeatCount = RepeatCount or 0,
+                Reverses = Reverses or false,
+                DelayTime = DelayTime or 0
+            }
+        end
+
+        local TweenSignals = {}
+
+        local function GetTweenSignal(id, eventName)
+            TweenSignals[id] = TweenSignals[id] or {}
+
+            if TweenSignals[id][eventName] then
+                return TweenSignals[id][eventName]
+            end
+
+            local Signal = {}
+
+            function Signal:Connect(callback)
+                if type(callback) ~= "function" then
+                    error("Connect expects a function")
+                end
+
+                local ConnectionId = __TweenConnectEvent(id, eventName, callback)
+
+                local Connection = {
+                    Connected = true
+                }
+
+                function Connection:Disconnect()
+                    if not self.Connected then
+                        return
+                    end
+
+                    __TweenDisconnectEvent(id, ConnectionId)
+                    self.Connected = false
+                end
+
+                return Connection
+            end
+
+            TweenSignals[id][eventName] = Signal
+
+            return Signal
+        end
+
+        local TweenService = {}
+
+        function TweenService:Create(instance, tweenInfo, propertyTable)
+            if type(instance) ~= "table" or type(instance.__id) ~= "number" then
+                error("TweenService:Create expects an Instance")
+            end
+
+            if type(tweenInfo) ~= "table" then
+                error("TweenService:Create expects TweenInfo")
+            end
+
+            if type(propertyTable) ~= "table" then
+                error("TweenService:Create expects a property table")
+            end
+
+            local id = __TweenCreate(instance.__id, tweenInfo, propertyTable)
+
+            local Tween = {
+                __id = id
+            }
+
+            function Tween:Play()
+                __TweenPlay(self.__id)
+            end
+
+            function Tween:Pause()
+                __TweenPause(self.__id)
+            end
+
+            function Tween:Cancel()
+                __TweenCancel(self.__id)
+            end
+
+            function Tween:Destroy()
+                __TweenDestroy(self.__id)
+                TweenSignals[self.__id] = nil
+            end
+
+            return setmetatable(Tween, {
+                __index = function(self, property)
+                    if property == "PlaybackState" then
+                        return __TweenGetState(self.__id)
+                    end
+
+                    if property == "Completed" or property == "Changed" then
+                        return GetTweenSignal(self.__id, property)
+                    end
+                end
+            })
+        end
+
+        game = {}
+
+        function game:GetService(serviceName)
+            if serviceName == "TweenService" then
+                return TweenService
+            end
+
+            error("Unknown service: " .. tostring(serviceName))
+        end
+
         Client = {
             ScreenSize = {
                 X = __ClientScreenWidth,
@@ -489,6 +666,12 @@ try {
         end
 
         print = __Print
+       
+        task = {}
+
+function task.wait(Seconds)
+    return __TaskWait(Seconds or 0)
+end
 
         ${source}
     `, "main.luau", true);

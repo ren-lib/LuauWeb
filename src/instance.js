@@ -1139,3 +1139,37 @@ export function color3FromRGB(r, g, b) {
 
     return `rgb(${normalize(r)}, ${normalize(g)}, ${normalize(b)})`;
 }
+
+export function getTweenProperty(id, property) {
+    const instance = instances.get(id);
+
+    if (!instance || instance._destroyed) {
+        throw new Error(`Instance ${id} does not exist`);
+    }
+
+    const Properties = {
+        Size: "_size",
+        Position: "_position",
+        AnchorPoint: "_anchorPoint",
+        BackgroundColor3: "_backgroundColor3",
+        BackgroundTransparency: "_backgroundTransparency"
+    };
+
+    if (Object.prototype.hasOwnProperty.call(Properties, property)) {
+        return instance[Properties[property]];
+    }
+
+    if (property === "TextColor3") {
+        return instance.Element
+            ? getComputedStyle(instance.Element).color
+            : undefined;
+    }
+
+    if (property === "TextSize") {
+        return instance.Element
+            ? Number.parseFloat(getComputedStyle(instance.Element).fontSize)
+            : undefined;
+    }
+
+    return instance.getProperty(property);
+}
