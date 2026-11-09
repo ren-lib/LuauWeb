@@ -1,4 +1,4 @@
-
+```js
 import { LuauState } from "luau-web";
 import {
     createInstance,
@@ -69,13 +69,8 @@ state.env.set("__UDim2FromOffset", udim2FromOffset, true);
 state.env.set("__Vector2New", vector2New, true);
 state.env.set("__Color3FromRGB", color3FromRGB, true);
 
-const source = await fetch(`${import.meta.env.BASE_URL}main.luau`).then(response => {
-    output.style.display = "block";
-    output.textContent += values.map(String).join("\t") + "\n";
-}, true);
-
 try {
-    const source = await fetch("/main.luau").then(response => {
+    const source = await fetch(`${import.meta.env.BASE_URL}main.luau`).then(response => {
         if (!response.ok) {
             throw new Error("Не удалось загрузить main.luau");
         }
@@ -218,3 +213,4 @@ try {
     output.textContent += "ERROR: " + error;
     console.error(error);
 }
+```
