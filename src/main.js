@@ -69,7 +69,7 @@ state.env.set("__UDim2FromOffset", udim2FromOffset, true);
 state.env.set("__Vector2New", vector2New, true);
 state.env.set("__Color3FromRGB", color3FromRGB, true);
 
-state.env.set("__Print", (...values) => {
+const source = await fetch(`${import.meta.env.BASE_URL}main.luau`).then(response => {
     output.style.display = "block";
     output.textContent += values.map(String).join("\t") + "\n";
 }, true);
