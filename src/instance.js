@@ -8,10 +8,10 @@ const FontStyles = {
     ArialBold: ["Arial, sans-serif", 700],
     SourceSans: ['"Source Sans 3", Arial, sans-serif', 400],
     SourceSansBold: ['"Source Sans 3", Arial, sans-serif', 700],
-    Gotham: ["Arial, sans-serif", 400],
-    GothamMedium: ["Arial, sans-serif", 500],
-    GothamSemibold: ["Arial, sans-serif", 600],
-    GothamBold: ["Arial, sans-serif", 700],
+    Montserrat: ['"Montserrat", sans-serif', 400],
+    MontserratMedium: ['"Montserrat", sans-serif', 500],
+    MontserratSemibold: ['"Montserrat", sans-serif', 600],
+    MontserratBold: ['"Montserrat", sans-serif', 700],
     Code: ["monospace", 400]
 };
 

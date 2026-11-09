@@ -69,6 +69,215 @@ state.env.set("__UDim2FromOffset", udim2FromOffset, true);
 state.env.set("__Vector2New", vector2New, true);
 state.env.set("__Color3FromRGB", color3FromRGB, true);
 
+state.env.set("__Print", (...Values) => console.log(...Values), true);
+
+function isLuauTable(value) {
+    return (
+        typeof value.get === "function" &&
+        typeof value.set === "function" &&
+        typeof value[Symbol.iterator] === "function"
+    );
+}
+
+function serializeClientValue(value, seen = new WeakSet()) {
+    if (
+        value === null ||
+        ["string", "number", "boolean"].includes(typeof value)
+    ) {
+        return value;
+    }
+
+    if (typeof value !== "object") {
+        throw new Error("Client.Set: unsupported value type");
+    }
+
+    if (seen.has(value)) {
+        throw new Error("Client.Set: circular tables are not supported");
+    }
+
+    if (!isLuauTable(value)) {
+        throw new Error("Client.Set: expected a Luau table or primitive value");
+    }
+
+    seen.add(value);
+
+    const Entries = [...value];
+    const IsArray = Entries.length > 0 &&
+        Entries.every(([Key]) => Number.isInteger(Key) && Key >= 1) &&
+        Math.max(...Entries.map(([Key]) => Key)) === Entries.length;
+
+    let Result;
+
+    if (IsArray) {
+        Result = [];
+
+        for (const [Key, Item] of Entries) {
+            Result[Key - 1] = serializeClientValue(Item, seen);
+        }
+    } else {
+        Result = Object.create(null);
+
+        for (const [Key, Item] of Entries) {
+            if (typeof Key !== "string" && typeof Key !== "number") {
+                throw new Error("Client.Set: table keys must be strings or numbers");
+            }
+
+            Result[Key] = serializeClientValue(Item, seen);
+        }
+    }
+
+    seen.delete(value);
+    return Result;
+}
+
+function clientSet(key, value) {
+    if (typeof key !== "string") {
+        throw new Error("Client.Set: Key must be a string");
+    }
+
+    if (value === undefined || value === null) {
+        localStorage.removeItem(`LuauWeb:${key}`);
+        return true;
+    }
+
+    const Data = serializeClientValue(value);
+    localStorage.setItem(`LuauWeb:${key}`, JSON.stringify(Data));
+
+    return true;
+}
+
+function clientGet(key) {
+    if (typeof key !== "string") {
+        throw new Error("Client.Get: Key must be a string");
+    }
+
+    const Data = localStorage.getItem(`LuauWeb:${key}`);
+
+    if (Data === null) {
+        return undefined;
+    }
+
+    return JSON.parse(Data);
+}
+
+const IsMobile = navigator.userAgentData?.mobile ??
+    (
+        /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+    );
+
+state.env.set("__ClientScreenWidth", window.innerWidth, true);
+state.env.set("__ClientScreenHeight", window.innerHeight, true);
+state.env.set("__ClientDevice", IsMobile ? "Mobile" : "PC", true);
+state.env.set("__ClientLanguage", navigator.languages?.[0] || navigator.language || "en-US", true);
+
+state.env.set("__ClientGet", clientGet, true);
+state.env.set("__ClientSet", clientSet, true);
+
+let CurrentModulePath = "main.luau";
+
+const ModuleCache = new Map();
+
+function resolveModulePath(modulePath) {
+    if (typeof modulePath !== "string" || !modulePath.trim()) {
+        throw new Error("require: module path must be a non-empty string");
+    }
+
+    if (/[?#:]/.test(modulePath) || modulePath.includes("\\")) {
+        throw new Error("require: invalid module path");
+    }
+
+    const IsAbsolute = modulePath.startsWith("/");
+    const Parts = IsAbsolute
+        ? []
+        : CurrentModulePath.split("/").slice(0, -1);
+
+    for (const Part of modulePath.split("/")) {
+        if (!Part || Part === ".") {
+            continue;
+        }
+
+        if (Part === "..") {
+            if (Parts.length === 0) {
+                throw new Error("require: module path is outside public");
+            }
+
+            Parts.pop();
+            continue;
+        }
+
+        Parts.push(Part);
+    }
+
+    let Path = Parts.join("/");
+
+    if (!Path) {
+        throw new Error("require: invalid module path");
+    }
+
+    if (!Path.endsWith(".luau")) {
+        Path += ".luau";
+    }
+
+    return Path;
+}
+
+async function clientRequire(modulePath) {
+    const Path = resolveModulePath(modulePath);
+
+    if (ModuleCache.has(Path)) {
+        const Cached = ModuleCache.get(Path);
+
+        if (Cached.loading) {
+            throw new Error(`require: circular dependency detected: ${Path}`);
+        }
+
+        return Cached.value;
+    }
+
+    const Entry = {
+        loading: true,
+        value: undefined
+    };
+
+    ModuleCache.set(Path, Entry);
+
+    const PreviousModulePath = CurrentModulePath;
+    CurrentModulePath = Path;
+
+    try {
+        const Url = `${import.meta.env.BASE_URL}${Path
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/")}`;
+
+        const Response = await fetch(Url);
+
+        if (!Response.ok) {
+            throw new Error(`Failed to load ${Path}: HTTP ${Response.status}`);
+        }
+
+        const Source = await Response.text();
+        const RunModule = state.loadstring(Source, Path, true);
+
+        const Results = await RunModule();
+        const Value = Results?.[0];
+
+        Entry.value = Value;
+        Entry.loading = false;
+
+        return Value;
+    } catch (error) {
+        ModuleCache.delete(Path);
+
+        throw new Error(`require("${Path}") failed: ${error.message}`);
+    } finally {
+        CurrentModulePath = PreviousModulePath;
+    }
+}
+
+state.env.set("__Require", clientRequire, true);
+
 try {
     const source = await fetch(`${import.meta.env.BASE_URL}main.luau`).then(response => {
         if (!response.ok) {
@@ -79,7 +288,7 @@ try {
     });
 
     const run = state.loadstring(`
-        local Instance = {}
+        Instance = {}
 
         local EventNames = {
             MouseButton1Click = true,
@@ -163,25 +372,25 @@ try {
             })
         end
 
-        local UDim = {
+        UDim = {
             new = __UDimNew
         }
 
-        local UDim2 = {
+        UDim2 = {
             new = __UDim2New,
             fromScale = __UDim2FromScale,
             fromOffset = __UDim2FromOffset
         }
 
-        local Vector2 = {
+        Vector2 = {
             new = __Vector2New
         }
 
-        local Color3 = {
+        Color3 = {
             fromRGB = __Color3FromRGB
         }
 
-        local Enum = {
+        Enum = {
             AutomaticSize = {
                 None = \`None\`,
                 X = \`X\`,
@@ -194,15 +403,37 @@ try {
                 ArialBold = \`ArialBold\`,
                 SourceSans = \`SourceSans\`,
                 SourceSansBold = \`SourceSansBold\`,
-                Gotham = \`Gotham\`,
-                GothamMedium = \`GothamMedium\`,
-                GothamSemibold = \`GothamSemibold\`,
-                GothamBold = \`GothamBold\`,
+                Montserrat = \`Montserrat\`,
+                MontserratMedium = \`MontserratMedium\`,
+                MontserratSemibold = \`MontserratSemibold\`,
+                MontserratBold = \`MontserratBold\`,
                 Code = \`Code\`
             }
         }
 
-        local print = __Print
+        Client = {
+            ScreenSize = {
+                X = __ClientScreenWidth,
+                Y = __ClientScreenHeight
+            },
+
+            Device = __ClientDevice,
+            Language = __ClientLanguage
+        }
+
+        function Client.Get(Key)
+            return __ClientGet(Key)
+        end
+
+        function Client.Set(Key, Value)
+            return __ClientSet(Key, Value)
+        end
+
+        function require(ModulePath)
+            return __Require(ModulePath)
+        end
+
+        print = __Print
 
         ${source}
     `, "main.luau", true);
@@ -213,4 +444,3 @@ try {
     output.textContent += "ERROR: " + error;
     console.error(error);
 }
-
