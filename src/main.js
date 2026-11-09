@@ -1,4 +1,4 @@
-```js
+
 import { LuauState } from "luau-web";
 import {
     createInstance,
@@ -213,4 +213,4 @@ try {
     output.textContent += "ERROR: " + error;
     console.error(error);
 }
-```
+
