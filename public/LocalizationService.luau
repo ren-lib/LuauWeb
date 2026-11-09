@@ -1,7 +1,12 @@
 local LocalizationService = {
-    WelcomeText = {
-        ru = `ПРИВЕТ`,
-        en = `HEJ`
+    welcome = {
+        ru = `ПРИВЕТ МИР`,
+        en = `HELLO WORLD`,
+        da = `HEJ VERDEN`,
+    },
+    welcomeSubtitle = {
+        ru = `это тест локализации. Например это текст на русском!`,
+        en = `this is localization test. For example this text in engilish!`,
     }
 }
 
@@ -15,7 +20,8 @@ function LocalizationService.Get(name:string)
         if Localizated then
             return Localizated
         else
-            return `{CurrentLanguage} not found in LocalizationService.[{name}]!`
+            print(`LocalizationService: Для {name} нету локали {CurrentLanguage}; будет использоваться локаль en.`)
+            return LocalizationService[name][`en`]
         end
     else
         return `{name} not found in LocalizationService!`

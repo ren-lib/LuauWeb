@@ -70,7 +70,7 @@ state.env.set("__Vector2New", vector2New, true);
 state.env.set("__Color3FromRGB", color3FromRGB, true);
 
 state.env.set("__Print", (...Values) => console.log(...Values), true);
-
+state.env.set("__AssetBaseUrl", import.meta.env.BASE_URL, true);
 function isLuauTable(value) {
     return (
         typeof value.get === "function" &&
@@ -169,7 +169,7 @@ const IsMobile = navigator.userAgentData?.mobile ??
 state.env.set("__ClientScreenWidth", window.innerWidth, true);
 state.env.set("__ClientScreenHeight", window.innerHeight, true);
 state.env.set("__ClientDevice", IsMobile ? "Mobile" : "PC", true);
-state.env.set("__ClientLanguage", navigator.languages?.[0] || navigator.language || "en-US", true);
+state.env.set("__ClientLanguage", (navigator.language || "en-US").split("-")[0], true);
 
 state.env.set("__ClientGet", clientGet, true);
 state.env.set("__ClientSet", clientSet, true);
@@ -288,6 +288,34 @@ try {
     });
 
     const run = state.loadstring(`
+                Content = {}
+
+        function Content.fromNet(URL)
+            if type(URL) ~= \`string\` or not URL:match(\`^https?://\`) then
+                error(\`Content.fromNet: expected an HTTP or HTTPS URL\`)
+            end
+
+            return URL
+        end
+
+        function Content.fromLocal(Path)
+            if type(Path) ~= \`string\` or Path == \`\` then
+                error(\`Content.fromLocal: expected a file path\`)
+            end
+
+            if Path:find(\`\\\\\`, 1, true) then
+                error(\`Content.fromLocal: invalid file path\`)
+            end
+
+            for Part in Path:gmatch(\`[^/]+\`) do
+                if Part == \`..\` then
+                    error(\`Content.fromLocal: path cannot go outside public\`)
+                end
+            end
+
+            return __AssetBaseUrl .. Path:gsub(\`^/+\`, \`\`)
+        end
+        
         Instance = {}
 
         local EventNames = {
@@ -390,7 +418,13 @@ try {
             fromRGB = __Color3FromRGB
         }
 
-        Enum = {
+            Enum = {
+            ScaleType = {
+    Stretch = \`Stretch\`,
+    Fit = \`Fit\`,
+    Crop = \`Crop\`,
+    Tile = \`Tile\`
+},
             AutomaticSize = {
                 None = \`None\`,
                 X = \`X\`,
@@ -408,6 +442,27 @@ try {
                 MontserratSemibold = \`MontserratSemibold\`,
                 MontserratBold = \`MontserratBold\`,
                 Code = \`Code\`
+            },
+
+            FillDirection = {
+                Vertical = \`Vertical\`,
+                Horizontal = \`Horizontal\`
+            },
+
+            HorizontalAlignment = {
+                Left = \`Left\`,
+                Center = \`Center\`,
+                Right = \`Right\`
+            },
+
+            VerticalAlignment = {
+                Top = \`Top\`,
+                Center = \`Center\`,
+                Bottom = \`Bottom\`
+            },
+
+            SortOrder = {
+                LayoutOrder = \`LayoutOrder\`
             }
         }
 

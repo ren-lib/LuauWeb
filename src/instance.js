@@ -58,19 +58,117 @@ function applyOpacity(color, opacity) {
     return `color-mix(in srgb, ${color} ${opacity * 100}%, transparent)`;
 }
 
+function getColorRGB(color) {
+    if (typeof color !== "string") {
+        return [255, 255, 255];
+    }
+
+    const Hex = color.match(/^#([0-9a-f]{6})$/i);
+
+    if (Hex) {
+        const Value = Hex[1];
+
+        return [
+            parseInt(Value.slice(0, 2), 16),
+            parseInt(Value.slice(2, 4), 16),
+            parseInt(Value.slice(4, 6), 16)
+        ];
+    }
+
+    const RGB = color.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
+
+    if (RGB) {
+        return [
+            Number(RGB[1]),
+            Number(RGB[2]),
+            Number(RGB[3])
+        ];
+    }
+
+    return [255, 255, 255];
+}
+
+function getUDimValue(value, size) {
+    if (!value) {
+        return 0;
+    }
+
+    return size * (value.Scale || 0) + (value.Offset || 0);
+}
+
 class WebInstance {
     constructor(className) {
         this.ClassName = className;
 
-        this.Element = ["UICorner", "UIStroke"].includes(className)
+        this.Element = [
+            "UICorner",
+            "UIStroke",
+            "UIListLayout",
+            "UIPadding"
+        ].includes(className)
             ? null
             : className === "ScreenGui"
                 ? document.createElement("div")
-                : className === "TextButton"
+                : ["TextButton", "ImageButton"].includes(className)
                     ? document.createElement("button")
                     : className === "TextLabel"
                         ? document.createElement("span")
                         : document.createElement("div");
+
+        this.ImageElement = null;
+        this.ImageTintFilter = null;
+        this.ImageTintFilterId = null;
+
+        if (["ImageLabel", "ImageButton"].includes(className)) {
+            this.ImageElement = document.createElement("img");
+            this.ImageElement.draggable = false;
+            this.ImageElement.style.cssText = `
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+            `;
+
+            this.Element.appendChild(this.ImageElement);
+
+            this.ImageTintFilterId = `ImageTint_${++NextId}`;
+
+            const SVG = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "svg"
+            );
+
+            SVG.style.position = "absolute";
+            SVG.style.width = "0";
+            SVG.style.height = "0";
+            SVG.style.pointerEvents = "none";
+
+            const Filter = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "filter"
+            );
+
+            Filter.setAttribute("id", this.ImageTintFilterId);
+            Filter.setAttribute("color-interpolation-filters", "sRGB");
+
+            const Matrix = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "feColorMatrix"
+            );
+
+            Matrix.setAttribute("type", "matrix");
+
+            Filter.appendChild(Matrix);
+            SVG.appendChild(Filter);
+            document.body.appendChild(SVG);
+
+            this.ImageTintFilter = {
+                SVG,
+                Filter,
+                Matrix
+            };
+        }
 
         this._parent = null;
         this._children = new Set();
@@ -78,11 +176,27 @@ class WebInstance {
         this._destroyed = false;
 
         this._text = "";
+        this._image = "";
+        this._imageTransparency = 0;
+        this._imageColor3 = "rgb(255, 255, 255)";
+        this._scaleType = "Stretch";
+
         this._size = {
             X: { Scale: 0, Offset: 0 },
             Y: { Scale: 0, Offset: 0 }
         };
 
+        this._position = {
+            X: { Scale: 0, Offset: 0 },
+            Y: { Scale: 0, Offset: 0 }
+        };
+
+        this._anchorPoint = {
+            X: 0,
+            Y: 0
+        };
+
+        this._layoutOrder = 0;
         this._automaticSize = "None";
         this._backgroundColor3 = "transparent";
         this._backgroundTransparency = 0;
@@ -98,6 +212,20 @@ class WebInstance {
 
         this._uiCorner = null;
         this._uiStroke = null;
+        this._uiListLayout = null;
+        this._uiPadding = null;
+        this._paddingObserver = null;
+
+        this._fillDirection = "Vertical";
+        this._listPadding = { Scale: 0, Offset: 0 };
+        this._horizontalAlignment = "Left";
+        this._verticalAlignment = "Top";
+        this._sortOrder = "LayoutOrder";
+
+        this._paddingTop = { Scale: 0, Offset: 0 };
+        this._paddingBottom = { Scale: 0, Offset: 0 };
+        this._paddingLeft = { Scale: 0, Offset: 0 };
+        this._paddingRight = { Scale: 0, Offset: 0 };
 
         if (!this.Element) {
             return;
@@ -107,11 +235,19 @@ class WebInstance {
 
         if (className === "ScreenGui") {
             this.Element.style.width = "100%";
+            this.Element.style.height = "100vh";
             this.Element.style.minHeight = "100vh";
             this.Element.style.position = "relative";
+            this.Element.style.boxSizing = "border-box";
         }
 
-        if (["Frame", "TextLabel", "TextButton"].includes(className)) {
+        if ([
+            "Frame",
+            "TextLabel",
+            "TextButton",
+            "ImageLabel",
+            "ImageButton"
+        ].includes(className)) {
             this.Element.style.position = "absolute";
         }
 
@@ -121,11 +257,12 @@ class WebInstance {
             this.Element.style.overflowWrap = "break-word";
         }
 
-        if (className === "TextButton") {
+        if (["TextButton", "ImageButton"].includes(className)) {
             this.Element.style.cursor = "pointer";
             this.Element.style.border = "0";
             this.Element.style.padding = "0";
             this.Element.style.font = "inherit";
+            this.Element.style.backgroundColor = "transparent";
         }
     }
 
@@ -139,13 +276,75 @@ class WebInstance {
 
         this.Element.style.width = AutoX
             ? "max-content"
-            : `calc(${this._size.X.Scale * 100}% + ${this._size.X.Offset}px)`;
+            : this._size.X.Scale === 0
+                ? `${this._size.X.Offset}px`
+                : `calc(${this._size.X.Scale * 100}% + ${this._size.X.Offset}px)`;
 
         this.Element.style.height = AutoY
             ? "auto"
-            : `calc(${this._size.Y.Scale * 100}% + ${this._size.Y.Offset}px)`;
+            : this._size.Y.Scale === 0
+                ? `${this._size.Y.Offset}px`
+                : `calc(${this._size.Y.Scale * 100}% + ${this._size.Y.Offset}px)`;
 
         this.scheduleAutomaticSize();
+    }
+
+    applyPosition() {
+        if (!this.Element) {
+            return;
+        }
+
+        this.Element.style.left =
+            `calc(${this._position.X.Scale * 100}% + ${this._position.X.Offset}px)`;
+
+        this.Element.style.top =
+            `calc(${this._position.Y.Scale * 100}% + ${this._position.Y.Offset}px)`;
+
+        this.Element.style.transform =
+            `translate(${-this._anchorPoint.X * 100}%, ${-this._anchorPoint.Y * 100}%)`;
+    }
+
+    applyImage() {
+        if (!this.ImageElement) {
+            return;
+        }
+
+        if (this._image) {
+            this.ImageElement.src = this._image;
+        } else {
+            this.ImageElement.removeAttribute("src");
+        }
+
+        const ScaleTypes = {
+            Stretch: "fill",
+            Fit: "contain",
+            Crop: "cover",
+            Tile: "fill"
+        };
+
+        this.ImageElement.style.objectFit =
+            ScaleTypes[this._scaleType] || "fill";
+
+        this.ImageElement.style.opacity = 1 - this._imageTransparency;
+
+        if (this.ImageTintFilter) {
+            const [R, G, B] = getColorRGB(this._imageColor3);
+
+            const Matrix = [
+                R / 255, 0, 0, 0, 0,
+                0, G / 255, 0, 0, 0,
+                0, 0, B / 255, 0, 0,
+                0, 0, 0, 1, 0
+            ];
+
+            this.ImageTintFilter.Matrix.setAttribute(
+                "values",
+                Matrix.join(" ")
+            );
+
+            this.ImageElement.style.filter =
+                `url(#${this.ImageTintFilterId})`;
+        }
     }
 
     scheduleAutomaticSize() {
@@ -229,17 +428,23 @@ class WebInstance {
                 break;
 
             case "Position":
-                this.Element.style.left = `calc(${value.X.Scale * 100}% + ${value.X.Offset}px)`;
-                this.Element.style.top = `calc(${value.Y.Scale * 100}% + ${value.Y.Offset}px)`;
+                this._position = value;
+                this.applyPosition();
                 break;
 
             case "AnchorPoint":
-                this.Element.style.transform = `translate(${-value.X * 100}%, ${-value.Y * 100}%)`;
+                this._anchorPoint = value;
+                this.applyPosition();
                 break;
 
             case "AutomaticSize":
                 this._automaticSize = value;
                 this.applySize();
+                break;
+
+            case "LayoutOrder":
+                this._layoutOrder = Number(value) || 0;
+                this.Element.style.order = this._layoutOrder;
                 break;
 
             case "Visible":
@@ -255,6 +460,26 @@ class WebInstance {
             case "BackgroundTransparency":
                 this._backgroundTransparency = Math.max(0, Math.min(1, Number(value)));
                 this.applyBackgroundColor();
+                break;
+
+            case "Image":
+                this._image = String(value || "");
+                this.applyImage();
+                break;
+
+            case "ImageColor3":
+                this._imageColor3 = value;
+                this.applyImage();
+                break;
+
+            case "ImageTransparency":
+                this._imageTransparency = Math.max(0, Math.min(1, Number(value)));
+                this.applyImage();
+                break;
+
+            case "ScaleType":
+                this._scaleType = value;
+                this.applyImage();
                 break;
 
             case "TextColor3":
@@ -299,6 +524,51 @@ class WebInstance {
                 this._strokeTransparency = Math.max(0, Math.min(1, Number(value)));
                 this._parent && renderDecorations(this._parent);
                 break;
+
+            case "FillDirection":
+                this._fillDirection = value;
+                this._parent && applyListLayout(this._parent);
+                break;
+
+            case "Padding":
+                this._listPadding = value;
+                this._parent && applyListLayout(this._parent);
+                break;
+
+            case "HorizontalAlignment":
+                this._horizontalAlignment = value;
+                this._parent && applyListLayout(this._parent);
+                break;
+
+            case "VerticalAlignment":
+                this._verticalAlignment = value;
+                this._parent && applyListLayout(this._parent);
+                break;
+
+            case "SortOrder":
+                this._sortOrder = value;
+                this._parent && applyListLayout(this._parent);
+                break;
+
+            case "PaddingTop":
+                this._paddingTop = value;
+                this._parent && applyUIPadding(this._parent);
+                break;
+
+            case "PaddingBottom":
+                this._paddingBottom = value;
+                this._parent && applyUIPadding(this._parent);
+                break;
+
+            case "PaddingLeft":
+                this._paddingLeft = value;
+                this._parent && applyUIPadding(this._parent);
+                break;
+
+            case "PaddingRight":
+                this._paddingRight = value;
+                this._parent && applyUIPadding(this._parent);
+                break;
         }
     }
 
@@ -306,6 +576,18 @@ class WebInstance {
         switch (property) {
             case "Text":
                 return this._text;
+
+            case "Image":
+                return this._image;
+
+            case "ImageColor3":
+                return this._imageColor3;
+
+            case "ImageTransparency":
+                return this._imageTransparency;
+
+            case "ScaleType":
+                return this._scaleType;
 
             case "ClassName":
                 return this.ClassName;
@@ -315,6 +597,9 @@ class WebInstance {
 
             case "Visible":
                 return this.Element ? !this.Element.hidden : undefined;
+
+            case "LayoutOrder":
+                return this._layoutOrder;
 
             case "CornerRadius":
                 return this._cornerRadius;
@@ -327,6 +612,35 @@ class WebInstance {
 
             case "Transparency":
                 return this._strokeTransparency;
+
+            case "FillDirection":
+                return this._fillDirection;
+
+            case "Padding":
+                return this.ClassName === "UIListLayout"
+                    ? this._listPadding
+                    : this._paddingTop;
+
+            case "HorizontalAlignment":
+                return this._horizontalAlignment;
+
+            case "VerticalAlignment":
+                return this._verticalAlignment;
+
+            case "SortOrder":
+                return this._sortOrder;
+
+            case "PaddingTop":
+                return this._paddingTop;
+
+            case "PaddingBottom":
+                return this._paddingBottom;
+
+            case "PaddingLeft":
+                return this._paddingLeft;
+
+            case "PaddingRight":
+                return this._paddingRight;
         }
 
         return undefined;
@@ -361,6 +675,148 @@ function renderDecorations(parent) {
     } else {
         parent.Element.style.outline = "";
         parent.Element.style.outlineOffset = "";
+    }
+}
+
+function applyListLayout(parent) {
+    if (!parent?.Element) {
+        return;
+    }
+
+    const Layout = parent._uiListLayout;
+
+    if (!Layout || Layout._destroyed) {
+        parent.Element.style.display = "";
+        parent.Element.style.flexDirection = "";
+        parent.Element.style.justifyContent = "";
+        parent.Element.style.alignItems = "";
+        parent.Element.style.gap = "";
+
+        for (const childId of parent._children) {
+            const Child = instances.get(childId);
+
+            if (!Child?.Element) {
+                continue;
+            }
+
+            Child.Element.style.position = "absolute";
+            Child.Element.style.flexShrink = "";
+            Child.Element.style.flexGrow = "";
+            Child.Element.style.minWidth = "";
+            Child.Element.style.minHeight = "";
+            Child.applyPosition();
+        }
+
+        return;
+    }
+
+    const Horizontal = Layout._fillDirection === "Horizontal";
+
+    parent.Element.style.display = "flex";
+    parent.Element.style.flexDirection = Horizontal ? "row" : "column";
+
+    const MainAlignment = Horizontal
+        ? Layout._horizontalAlignment
+        : Layout._verticalAlignment;
+
+    const CrossAlignment = Horizontal
+        ? Layout._verticalAlignment
+        : Layout._horizontalAlignment;
+
+    const Justify = {
+        Left: "flex-start",
+        Right: "flex-end",
+        Center: "center",
+        Top: "flex-start",
+        Bottom: "flex-end"
+    };
+
+    const Align = {
+        Left: "flex-start",
+        Right: "flex-end",
+        Center: "center",
+        Top: "flex-start",
+        Bottom: "flex-end"
+    };
+
+    parent.Element.style.justifyContent = Justify[MainAlignment] || "flex-start";
+    parent.Element.style.alignItems = Align[CrossAlignment] || "flex-start";
+
+    for (const childId of parent._children) {
+        const Child = instances.get(childId);
+
+        if (!Child?.Element) {
+            continue;
+        }
+
+        Child.Element.style.position = "relative";
+        Child.Element.style.left = "auto";
+        Child.Element.style.top = "auto";
+        Child.Element.style.transform = "none";
+        Child.Element.style.flexShrink = "0";
+        Child.Element.style.flexGrow = "0";
+        Child.Element.style.minWidth = "0";
+        Child.Element.style.minHeight = "0";
+        Child.Element.style.order = Layout._sortOrder === "LayoutOrder"
+            ? Child._layoutOrder
+            : 0;
+    }
+
+    applyListGap(parent);
+    parent.scheduleAutomaticSize();
+}
+
+function applyListGap(parent) {
+    const Layout = parent?._uiListLayout;
+
+    if (!Layout || Layout._destroyed || !parent.Element) {
+        return;
+    }
+
+    const Horizontal = Layout._fillDirection === "Horizontal";
+    const Size = Horizontal
+        ? parent.Element.clientWidth
+        : parent.Element.clientHeight;
+
+    parent.Element.style.gap = `${getUDimValue(Layout._listPadding, Size)}px`;
+}
+
+function applyUIPadding(parent) {
+    if (!parent?.Element) {
+        return;
+    }
+
+    const Padding = parent._uiPadding;
+
+    if (!Padding || Padding._destroyed) {
+        parent.Element.style.padding = "";
+        parent._paddingObserver?.disconnect();
+        parent._paddingObserver = null;
+        return;
+    }
+
+    const Width = parent.Element.clientWidth;
+    const Height = parent.Element.clientHeight;
+
+    parent.Element.style.paddingTop =
+        `${getUDimValue(Padding._paddingTop, Height)}px`;
+
+    parent.Element.style.paddingBottom =
+        `${getUDimValue(Padding._paddingBottom, Height)}px`;
+
+    parent.Element.style.paddingLeft =
+        `${getUDimValue(Padding._paddingLeft, Width)}px`;
+
+    parent.Element.style.paddingRight =
+        `${getUDimValue(Padding._paddingRight, Width)}px`;
+
+    if (!parent._paddingObserver && typeof ResizeObserver !== "undefined") {
+        parent._paddingObserver = new ResizeObserver(() => {
+            applyUIPadding(parent);
+            applyListGap(parent);
+        });
+
+        parent._paddingObserver.observe(parent.Element);
     }
 }
 
@@ -400,6 +856,16 @@ function setParent(id, value) {
             oldParent._uiStroke = null;
         }
 
+        if (oldParent._uiListLayout === instance) {
+            oldParent._uiListLayout = null;
+            applyListLayout(oldParent);
+        }
+
+        if (oldParent._uiPadding === instance) {
+            oldParent._uiPadding = null;
+            applyUIPadding(oldParent);
+        }
+
         renderDecorations(oldParent);
         oldParent.scheduleAutomaticSize();
     }
@@ -407,6 +873,22 @@ function setParent(id, value) {
     instance._parent = parent;
 
     if (parent) {
+        if (
+            instance.ClassName === "UIListLayout" &&
+            parent._uiListLayout &&
+            parent._uiListLayout !== instance
+        ) {
+            throw new Error("A parent can only have one UIListLayout");
+        }
+
+        if (
+            instance.ClassName === "UIPadding" &&
+            parent._uiPadding &&
+            parent._uiPadding !== instance
+        ) {
+            throw new Error("A parent can only have one UIPadding");
+        }
+
         parent._children.add(id);
 
         if (instance.ClassName === "UICorner") {
@@ -415,8 +897,18 @@ function setParent(id, value) {
         } else if (instance.ClassName === "UIStroke") {
             parent._uiStroke = instance;
             renderDecorations(parent);
+        } else if (instance.ClassName === "UIListLayout") {
+            parent._uiListLayout = instance;
+            applyListLayout(parent);
+        } else if (instance.ClassName === "UIPadding") {
+            parent._uiPadding = instance;
+            applyUIPadding(parent);
         } else {
             parent.Element.appendChild(instance.Element);
+
+            if (parent._uiListLayout) {
+                applyListLayout(parent);
+            }
         }
 
         parent.scheduleAutomaticSize();
@@ -456,18 +948,12 @@ export function setProperty(id, property, value) {
         return;
     }
 
-    if (["UICorner", "UIStroke"].includes(instance.ClassName)) {
-        if (property === "CornerRadius" && instance.ClassName !== "UICorner") {
-            throw new Error("CornerRadius is only available on UICorner");
-        }
-
-        if (
-            ["Color", "Thickness", "Transparency"].includes(property) &&
-            instance.ClassName !== "UIStroke"
-        ) {
-            throw new Error(`${property} is only available on UIStroke`);
-        }
-
+    if ([
+        "UICorner",
+        "UIStroke",
+        "UIListLayout",
+        "UIPadding"
+    ].includes(instance.ClassName)) {
         instance.setProperty(property, value);
         return;
     }
@@ -525,10 +1011,22 @@ export function destroyInstance(id) {
             parent._uiStroke = null;
         }
 
+        if (parent._uiListLayout === instance) {
+            parent._uiListLayout = null;
+            applyListLayout(parent);
+        }
+
+        if (parent._uiPadding === instance) {
+            parent._uiPadding = null;
+            applyUIPadding(parent);
+        }
+
         renderDecorations(parent);
         parent.scheduleAutomaticSize();
     }
 
+    instance._paddingObserver?.disconnect();
+    instance.ImageTintFilter?.SVG.remove();
     instance.Element?.remove();
     instances.delete(id);
 }
