@@ -8,7 +8,9 @@ export function createInstanceDOM(className, nextFilterId) {
             "UIPadding"
         ].includes(className)
             ? null
-            : className === "ScreenGui"
+            : className === "Sound"
+                ? document.createElement("audio")
+                : className === "ScreenGui"
                 ? document.createElement("div")
                 : ["TextButton", "ImageButton"].includes(className)
                     ? document.createElement("button")
@@ -96,6 +98,10 @@ export function createInstanceDOM(className, nextFilterId) {
                 Matrix
             };
         }
+
+    if (className === "Sound") {
+        view.Element.preload = "auto";
+    }
 
     return {
         Element: view.Element,

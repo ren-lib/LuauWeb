@@ -20,6 +20,25 @@ export function setInstanceProperty(instance, property, value) {
                 instance._name = String(value);
                 break;
 
+            case "SoundId":
+                instance._soundId = String(value || "");
+                if (instance.Element) instance.Element.src = instance._soundId;
+                break;
+            case "Volume":
+                instance._volume = Math.max(0, Number(value) || 0);
+                if (instance.Element) instance.Element.volume = Math.min(1, instance._volume);
+                break;
+            case "PlaybackSpeed":
+                instance._playbackSpeed = Number(value) > 0 ? Number(value) : 1;
+                if (instance.Element) instance.Element.playbackRate = instance._playbackSpeed;
+                break;
+            case "Playing":
+                if (instance.ClassName === "Sound" && instance.Element) {
+                    if (Boolean(value)) instance.Element.play().catch(() => {});
+                    else instance.Element.pause();
+                }
+                break;
+
             case "CanvasSize":
     instance._canvasSize = value;
     instance.scheduleAutomaticCanvasSize();
@@ -264,6 +283,10 @@ export function getInstanceProperty(instance, property) {
         switch (property) {
             case "Name":
                 return instance._name;
+            case "SoundId": return instance._soundId;
+            case "Volume": return instance._volume;
+            case "PlaybackSpeed": return instance._playbackSpeed;
+            case "Playing": return instance.ClassName === "Sound" && !instance.Element.paused;
 
             case "CanvasSize":
     return instance._canvasSize;

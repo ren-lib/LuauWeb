@@ -57,6 +57,9 @@ class WebInstance {
         this._textXAlignment = "Left";
         this._textYAlignment = "Center";
         this._image = "";
+        this._soundId = "";
+        this._volume = 1;
+        this._playbackSpeed = 1;
         this._imageTransparency = 0;
         this._imageColor3 = "rgb(255, 255, 255)";
         this._scaleType = "Stretch";

@@ -1,4 +1,5 @@
 const Gui = ['ScreenGui']
+const Audio = ['Sound']
 const Visual = ['Frame', 'ScrollingFrame', 'TextLabel', 'TextButton', 'ImageLabel', 'ImageButton']
 const Text = ['TextLabel', 'TextButton']
 const Image = ['ImageLabel', 'ImageButton']
@@ -7,9 +8,13 @@ const Decor = ['UICorner', 'UIStroke', 'UIListLayout', 'UIPadding']
 // Contract catalog for the currently implemented Luau-facing properties.
 // classNames is explicit so editor tooling and validation can share the same API.
 export const INSTANCE_PROPERTY_SPECS = Object.freeze({
-    ClassName: { type: 'string', classNames: [...Gui, ...Visual, ...Decor], readOnly: true },
-    Name: { type: 'string', default: 'ClassName', classNames: [...Gui, ...Visual, ...Decor] },
+    ClassName: { type: 'string', classNames: [...Gui, ...Visual, ...Decor, ...Audio], readOnly: true },
+    Name: { type: 'string', default: 'ClassName', classNames: [...Gui, ...Visual, ...Decor, ...Audio] },
     Parent: { type: 'Instance?', classNames: [...Gui, ...Visual, ...Decor] },
+    SoundId: { type: 'string', default: '', classNames: Audio },
+    Volume: { type: 'number', default: 1, classNames: Audio },
+    PlaybackSpeed: { type: 'number', default: 1, classNames: Audio },
+    Playing: { type: 'boolean', default: false, classNames: Audio },
     Visible: { type: 'boolean', default: true, classNames: Visual },
     Size: { type: 'UDim2', default: { X: { Scale: 0, Offset: 0 }, Y: { Scale: 0, Offset: 0 } }, classNames: Visual },
     Position: { type: 'UDim2', default: { X: { Scale: 0, Offset: 0 }, Y: { Scale: 0, Offset: 0 } }, classNames: Visual },

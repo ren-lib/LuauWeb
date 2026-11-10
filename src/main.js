@@ -2,6 +2,7 @@
 import { LuauState } from "luau-web";
 import {
     createInstance,
+    instances,
     setProperty,
     getProperty,
     destroyInstance,
@@ -80,6 +81,18 @@ state.env.set("__TaskWait", async (Seconds = 0) => {
 state.env.set("__InstanceNew", createInstance, true);
 state.env.set("__SetProperty", setProperty, true);
 state.env.set("__GetProperty", getProperty, true);
+state.env.set("__SoundAction", (id, action) => {
+    const instance = instances.get(id);
+    if (!instance || instance._destroyed || instance.ClassName !== "Sound") {
+        throw new Error("Sound method can only be used on a Sound instance");
+    }
+    if (action === "Play") return instance.Element.play();
+    else if (action === "Pause") instance.Element.pause();
+    else if (action === "Stop") {
+        instance.Element.pause();
+        instance.Element.currentTime = 0;
+    }
+}, true);
 state.env.set("__Destroy", destroyInstance, true);
 
 state.env.set("__ConnectEvent", connectEvent, true);
@@ -395,9 +408,9 @@ try {
     const run = state.loadstring(`
                 Content = {}
 
-        function Content.fromNet(URL)
+        function Content.fromWeb(URL)
             if type(URL) ~= \`string\` or not URL:match(\`^https?://\`) then
-                error(\`Content.fromNet: expected an HTTP or HTTPS URL\`)
+                error(\`Content.fromWeb: expected an HTTP or HTTPS URL\`)
             end
 
             return URL
@@ -486,6 +499,16 @@ try {
     local Object = {
         __id = id
     }
+
+    Object.Play = function(self)
+        __SoundAction(id, "Play")
+    end
+    Object.Stop = function(self)
+        __SoundAction(id, "Stop")
+    end
+    Object.Pause = function(self)
+        __SoundAction(id, "Pause")
+    end
 
     setmetatable(Object, {
         __index = function(self, property)
