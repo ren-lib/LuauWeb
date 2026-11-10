@@ -2,21 +2,22 @@ export type props = {
     textColor:Color3?,
     text:string,
     textSize:number?,
-    parentTo:Instance,
+    parentTo:Instance?,
     font:Font?,
+    --mode:string?,
 }
 
 local function Text(props:props)
-    local Component = Instance.new(`TextLabel`)
-    Component.TextColor3 = props.textColor or Color3.fromRGB(255,255,255)
-    Component.Parent = props.parentTo
-    Component.Font = props.font or `Montserrat`
-    Component.AutomaticSize = Enum.AutomaticSize.Y
-    Component.Size = UDim2.fromScale(1, 0)
-    Component.TextSize = props.textSize or 20
-    Component.Text = props.text
-
-    return Component
+    return Instance.new(`TextLabel`, {
+        TextColor3 = props.textColor or Color3.fromRGB(255, 255, 255),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Font = props.font or `Montserrat`,
+        AutomaticSize = props.mode or Enum.AutomaticSize.Y,
+        Size = UDim2.fromScale(props.mode == `X` and 0 or 1, props.mode == `Y` and 0 or 1),
+        TextSize = props.textSize or 20,
+        Text = props.text,
+        Parent = props.parentTo
+    })
 end
 
 return Text

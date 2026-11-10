@@ -62,6 +62,11 @@ output.style.cssText = `
 app.appendChild(output);
 
 const state = await LuauState.createAsync({});
+state.env.set('__PagePath', window.location.pathname, true);
+
+state.env.set('__Navigate', (Url) => {
+    window.location.href = Url;
+}, true);
 state.env.set("__TaskWait", async (Seconds = 0) => {
     const Start = performance.now();
 
@@ -148,7 +153,54 @@ function serializeClientValue(value, seen = new WeakSet()) {
     seen.delete(value);
     return Result;
 }
+function serializeTweenValue(value, seen = new WeakSet()) {
+    if (
+        value === null ||
+        ["string", "number", "boolean"].includes(typeof value)
+    ) {
+        return value;
+    }
 
+    if (typeof value !== "object") {
+        throw new Error("Tween: unsupported value type");
+    }
+
+    if (seen.has(value)) {
+        throw new Error("Tween: circular tables are not supported");
+    }
+
+    seen.add(value);
+
+    let Result;
+
+    if (Array.isArray(value)) {
+        Result = value.map(Item => serializeTweenValue(Item, seen));
+    } else if (isLuauTable(value)) {
+        const Entries = [...value];
+        const IsArray = Entries.length > 0 &&
+            Entries.every(([Key]) => Number.isInteger(Key) && Key >= 1) &&
+            Math.max(...Entries.map(([Key]) => Key)) === Entries.length;
+
+        Result = IsArray ? [] : Object.create(null);
+
+        for (const [Key, Item] of Entries) {
+            if (typeof Key !== "string" && typeof Key !== "number") {
+                throw new Error("Tween: table keys must be strings or numbers");
+            }
+
+            Result[IsArray ? Key - 1 : Key] = serializeTweenValue(Item, seen);
+        }
+    } else {
+        Result = Object.create(null);
+
+        for (const [Key, Item] of Object.entries(value)) {
+            Result[Key] = serializeTweenValue(Item, seen);
+        }
+    }
+
+    seen.delete(value);
+    return Result;
+}
 function clientSet(key, value) {
     if (typeof key !== "string") {
         throw new Error("Client.Set: Key must be a string");
@@ -185,8 +237,16 @@ const IsMobile = navigator.userAgentData?.mobile ??
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
     );
 
-state.env.set("__ClientScreenWidth", window.innerWidth, true);
-state.env.set("__ClientScreenHeight", window.innerHeight, true);
+let ClientCursorX = 0;
+let ClientCursorY = 0;
+window.addEventListener("pointermove", event => {
+    ClientCursorX = event.clientX;
+    ClientCursorY = event.clientY;
+}, { passive: true });
+state.env.set("__GetClientScreenWidth", () => window.innerWidth, true);
+state.env.set("__GetClientScreenHeight", () => window.innerHeight, true);
+state.env.set("__GetClientCursorX", () => ClientCursorX, true);
+state.env.set("__GetClientCursorY", () => ClientCursorY, true);
 state.env.set("__ClientDevice", IsMobile ? "Mobile" : "PC", true);
 state.env.set("__ClientLanguage", (navigator.language || "en-US").split("-")[0], true);
 
@@ -196,8 +256,8 @@ state.env.set("__ClientSet", clientSet, true);
 state.env.set("__TweenCreate", (instanceId, info, goals) => {
     return createTween(
         instanceId,
-        serializeClientValue(info),
-        serializeClientValue(goals)
+        serializeTweenValue(info),
+        serializeTweenValue(goals)
     );
 }, true);
 
@@ -290,10 +350,19 @@ async function clientRequire(modulePath) {
         const Response = await fetch(Url);
 
         if (!Response.ok) {
-            throw new Error(`Failed to load ${Path}: HTTP ${Response.status}`);
+            if (Response.status === 404) {
+                throw new Error(`ModuleNotExists: ${Path}`);
+            }
+            throw new Error(`ModuleLoadFailed: ${Path} (HTTP ${Response.status})`);
         }
 
         const Source = await Response.text();
+        const ContentType = Response.headers.get("content-type") || "";
+        const LooksLikeHtml = /^\uFEFF?\s*(?:<!doctype\s+html|<html\b)/i.test(Source);
+        if (ContentType.includes("text/html") || LooksLikeHtml) {
+            throw new Error(`ModuleNotExists: ${Path}`);
+        }
+
         const RunModule = state.loadstring(Source, Path, true);
 
         const Results = await RunModule();
@@ -399,42 +468,72 @@ try {
             return Signal
         end
 
-        Instance.new = function(className)
-            local id = __InstanceNew(className)
+        Instance.new = function(className, props, children)
+    if type(className) ~= "string" then
+        error("Instance.new: className must be a string")
+    end
 
-            local Object = {
-                __id = id
-            }
+    if props ~= nil and type(props) ~= "table" then
+        error("Instance.new: props must be a table")
+    end
 
-            return setmetatable(Object, {
-                __index = function(self, property)
-                    if property == "__id" then
-                        return id
-                    end
+    if children ~= nil and type(children) ~= "table" then
+        error("Instance.new: children must be a table")
+    end
 
-                    if property == "Destroy" then
-                        return function()
-                            __Destroy(id)
-                            Signals[id] = nil
-                        end
-                    end
+    local id = __InstanceNew(className)
 
-                    if EventNames[property] then
-                        return GetSignal(id, property)
-                    end
+    local Object = {
+        __id = id
+    }
 
-                    return __GetProperty(id, property)
-                end,
+    setmetatable(Object, {
+        __index = function(self, property)
+            if property == "__id" then
+                return id
+            end
 
-                __newindex = function(self, property, value)
-                    if property == "Parent" and type(value) == "table" then
-                        value = value.__id
-                    end
-
-                    __SetProperty(id, property, value)
+            if property == "Destroy" then
+                return function()
+                    __Destroy(id)
+                    Signals[id] = nil
                 end
-            })
+            end
+
+            if EventNames[property] then
+                return GetSignal(id, property)
+            end
+
+            return __GetProperty(id, property)
+        end,
+
+        __newindex = function(self, property, value)
+            if property == "Parent" and type(value) == "table" then
+                value = value.__id
+            end
+
+            __SetProperty(id, property, value)
         end
+    })
+
+    if props then
+        for property, value in pairs(props) do
+            Object[property] = value
+        end
+    end
+
+    if children then
+        for _, child in ipairs(children) do
+            if type(child) ~= "table" or type(child.__id) ~= "number" then
+                error("Instance.new: children must contain Instances")
+            end
+
+            child.Parent = Object
+        end
+    end
+
+    return Object
+end
 
         UDim = {
             new = __UDimNew
@@ -505,6 +604,7 @@ PlaybackState = {
                 MontserratMedium = \`MontserratMedium\`,
                 MontserratSemibold = \`MontserratSemibold\`,
                 MontserratBold = \`MontserratBold\`,
+                MontserratBlack = \`MontserratBlack\`,
                 Code = \`Code\`
             },
 
@@ -513,6 +613,17 @@ PlaybackState = {
                 Horizontal = \`Horizontal\`
             },
 
+            ScrollingDirection = {
+                X = \`X\`,
+                Y = \`Y\`,
+                XY = \`XY\`
+            },
+
+            TextXAlignment = {
+                Left = \`Left\`,
+                Center = \`Center\`,
+                Right = \`Right\`
+            },
             HorizontalAlignment = {
                 Left = \`Left\`,
                 Center = \`Center\`,
@@ -643,15 +754,23 @@ PlaybackState = {
             error("Unknown service: " .. tostring(serviceName))
         end
 
-        Client = {
-            ScreenSize = {
-                X = __ClientScreenWidth,
-                Y = __ClientScreenHeight
-            },
-
+        Client = setmetatable({
             Device = __ClientDevice,
             Language = __ClientLanguage
-        }
+        }, {
+            __index = function(_, Property)
+                if Property == "ScreenSize" then
+                    return Vector2.new(__GetClientScreenWidth(), __GetClientScreenHeight())
+                elseif Property == "CursorPosition" then
+                    return Vector2.new(__GetClientCursorX(), __GetClientCursorY())
+                end
+            end
+        })
+            Client.PagePath = __PagePath
+
+function Client.Navigate(Url)
+    __Navigate(Url)
+end
 
         function Client.Get(Key)
             return __ClientGet(Key)
