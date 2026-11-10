@@ -8,6 +8,16 @@ export function renderDecorations(parent) {
 
     const Corner = parent._uiCorner;
     const Stroke = parent._uiStroke;
+    const Gradient = parent._uiGradient;
+    if (Gradient && !Gradient._destroyed && Gradient._colorSequence?.length) {
+        const stops = Gradient._colorSequence.map(point => `${point.Color} ${Math.max(0, Math.min(1, point.Time)) * 100}%`).join(', ');
+        parent.Element.style.backgroundImage = `linear-gradient(${90 + (Gradient._rotation || 0)}deg, ${stops})`;
+        // Roblox UIGradient.Color modulates the GuiObject's existing background color.
+        parent.Element.style.backgroundBlendMode = "multiply";
+    } else {
+        parent.Element.style.backgroundImage = "";
+        parent.Element.style.backgroundBlendMode = "";
+    }
 
     if (Corner && !Corner._destroyed) {
         const Radius = Corner._cornerRadius;

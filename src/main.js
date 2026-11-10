@@ -13,7 +13,10 @@ import {
     udim2FromScale,
     udim2FromOffset,
     vector2New,
-    color3FromRGB
+    color3FromRGB,
+    color3FromHex,
+    colorSequenceNew,
+    colorSequenceKeypointNew
 } from "./instance.js";
 import {
     createTween,
@@ -105,6 +108,9 @@ state.env.set("__UDim2FromOffset", udim2FromOffset, true);
 
 state.env.set("__Vector2New", vector2New, true);
 state.env.set("__Color3FromRGB", color3FromRGB, true);
+state.env.set("__Color3FromHex", color3FromHex, true);
+state.env.set("__ColorSequenceNew", colorSequenceNew, true);
+state.env.set("__ColorSequenceKeypointNew", colorSequenceKeypointNew, true);
 
 state.env.set("__Print", (...Values) => console.log(...Values), true);
 state.env.set("__AssetBaseUrl", import.meta.env.BASE_URL, true);
@@ -573,7 +579,28 @@ end
         }
 
         Color3 = {
-            fromRGB = __Color3FromRGB
+            fromRGB = __Color3FromRGB,
+            fromHex = __Color3FromHex
+        }
+
+        ColorSequenceKeypoint = {
+            new = function(time, color)
+                return { Time = time, Value = color, Color = color }
+            end
+        }
+
+        ColorSequence = {
+            new = function(points)
+                local result = {}
+                for _, point in ipairs(points) do
+                    table.insert(result, {
+                        Time = point.Time,
+                        Color = point.Color or point.Value
+                    })
+                end
+                table.sort(result, function(a, b) return a.Time < b.Time end)
+                return result
+            end
         }
 
             Enum = {
@@ -628,6 +655,12 @@ PlaybackState = {
                 MontserratSemibold = \`MontserratSemibold\`,
                 MontserratBold = \`MontserratBold\`,
                 MontserratBlack = \`MontserratBlack\`,
+                OswaldExtraLight = \`OswaldExtraLight\`,
+                OswaldLight = \`OswaldLight\`,
+                Oswald = \`Oswald\`,
+                OswaldMedium = \`OswaldMedium\`,
+                OswaldSemibold = \`OswaldSemibold\`,
+                OswaldBold = \`OswaldBold\`,
                 Code = \`Code\`
             },
 

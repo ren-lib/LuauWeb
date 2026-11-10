@@ -238,7 +238,8 @@ export function setProperty(id, property, value) {
         "UICorner",
         "UIStroke",
         "UIListLayout",
-        "UIPadding"
+        "UIPadding",
+        "UIGradient"
     ].includes(instance.ClassName)) {
         instance.setProperty(property, value);
         return;
@@ -314,6 +315,36 @@ export function color3FromRGB(r, g, b) {
     };
 
     return `rgb(${normalize(r)}, ${normalize(g)}, ${normalize(b)})`;
+}
+
+export function color3FromHex(hex) {
+    const value = String(hex).trim().replace(/^#/, "");
+    const expanded = value.length === 3
+        ? [...value].map(character => character + character).join("")
+        : value;
+
+    if (!/^[0-9a-fA-F]{6}$/.test(expanded)) {
+        throw new Error("Color3.fromHex expects a 3- or 6-digit hex color");
+    }
+
+    return `rgb(${parseInt(expanded.slice(0, 2), 16)}, ${parseInt(expanded.slice(2, 4), 16)}, ${parseInt(expanded.slice(4, 6), 16)})`;
+}
+
+export function colorSequenceKeypointNew(time, color) {
+    return { Time: Number(time), Value: color, Color: color };
+}
+
+export function colorSequenceNew(points) {
+    const entries = Array.isArray(points) ? points : points && typeof points[Symbol.iterator] === "function"
+        ? [...points].sort(([a], [b]) => Number(a) - Number(b)).map(entry => entry[1])
+        : [];
+    if (entries.length === 0) {
+        throw new Error("ColorSequence.new expects a non-empty array of keypoints");
+    }
+    return entries.map(point => {
+        const get = key => point?.[key] ?? point?.get?.(key);
+        return { Time: Number(get("Time")), Color: String(get("Color") ?? get("Value")) };
+    }).sort((a, b) => a.Time - b.Time);
 }
 
 export function getTweenProperty(id, property) {

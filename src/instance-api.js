@@ -3,7 +3,7 @@ const Audio = ['Sound']
 const Visual = ['Frame', 'ScrollingFrame', 'TextLabel', 'TextButton', 'ImageLabel', 'ImageButton']
 const Text = ['TextLabel', 'TextButton']
 const Image = ['ImageLabel', 'ImageButton']
-const Decor = ['UICorner', 'UIStroke', 'UIListLayout', 'UIPadding']
+const Decor = ['UICorner', 'UIStroke', 'UIGradient', 'UIListLayout', 'UIPadding']
 
 // Contract catalog for the currently implemented Luau-facing properties.
 // classNames is explicit so editor tooling and validation can share the same API.
@@ -43,7 +43,8 @@ export const INSTANCE_PROPERTY_SPECS = Object.freeze({
     ScrollingDirection: { type: 'Enum.ScrollingDirection', default: 'XY', classNames: ['ScrollingFrame'] },
     ScrollBarThickness: { type: 'number', default: 12, classNames: ['ScrollingFrame'] },
     CornerRadius: { type: 'UDim', default: { Scale: 0, Offset: 8 }, classNames: ['UICorner'] },
-    Color: { type: 'Color3', default: 'rgb(255, 255, 255)', classNames: ['UIStroke'] },
+    Color: { type: 'Color3 | ColorSequence', default: 'rgb(255, 255, 255)', classNames: ['UIStroke', 'UIGradient'] },
+    Rotation: { type: 'number', default: 0, classNames: ['UIGradient'] },
     Thickness: { type: 'number', default: 1, classNames: ['UIStroke'] },
     Transparency: { type: 'number', default: 0, classNames: ['UIStroke'] },
     FillDirection: { type: 'Enum.FillDirection', default: 'Vertical', classNames: ['UIListLayout'] },

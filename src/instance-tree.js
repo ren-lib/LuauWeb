@@ -52,6 +52,7 @@ export function setParent(id, value) {
         if (oldParent._uiStroke === instance) {
             oldParent._uiStroke = null;
         }
+        if (oldParent._uiGradient === instance) oldParent._uiGradient = null;
 
         if (oldParent._uiListLayout === instance) {
             oldParent._uiListLayout = null;
@@ -78,6 +79,9 @@ export function setParent(id, value) {
             renderDecorations(parent);
         } else if (instance.ClassName === "UIStroke") {
             parent._uiStroke = instance;
+            renderDecorations(parent);
+        } else if (instance.ClassName === "UIGradient") {
+            parent._uiGradient = instance;
             renderDecorations(parent);
         } else if (instance.ClassName === "UIListLayout") {
             parent._uiListLayout = instance;

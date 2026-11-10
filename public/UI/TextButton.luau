@@ -43,7 +43,7 @@ local function Button(props:props)
             Enum.EasingDirection.Out
         ), 
         {
-            CornerRadius = UDim.new(.5,0)
+            CornerRadius = UDim.new(0,13)
         }
     )
     local LeaveTween = TweenService:Create(

@@ -11,6 +11,12 @@ const FontStyles = {
     MontserratSemibold: ['"Montserrat", sans-serif', 600],
     MontserratBold: ['"Montserrat", sans-serif', 700],
     MontserratBlack: ['"Montserrat", sans-serif', 900],
+    OswaldExtraLight: ['"Oswald", sans-serif', 200],
+    OswaldLight: ['"Oswald", sans-serif', 300],
+    Oswald: ['"Oswald", sans-serif', 400],
+    OswaldMedium: ['"Oswald", sans-serif', 500],
+    OswaldSemibold: ['"Oswald", sans-serif', 600],
+    OswaldBold: ['"Oswald", sans-serif', 700],
     Code: ["monospace", 400]
 };
 
@@ -205,7 +211,21 @@ case "TextYAlignment":
     break;
 
             case "Color":
-                instance._strokeColor = value;
+                if (instance.ClassName === "UIGradient") {
+                    instance._colorSequence = Array.isArray(value) ? value : value && typeof value[Symbol.iterator] === "function"
+                        ? [...value].map(([, point]) => point)
+                        : [];
+                } else {
+                    instance._strokeColor = value;
+                }
+                instance._parent && renderDecorations(instance._parent);
+                break;
+
+            case "ColorSequence":
+                return instance._colorSequence;
+
+            case "Rotation":
+                instance._rotation = Number(value) || 0;
                 instance._parent && renderDecorations(instance._parent);
                 break;
 
@@ -367,7 +387,11 @@ case "ScrollBarThickness":
                 return instance._cornerRadius;
 
             case "Color":
-                return instance._strokeColor;
+                return instance.ClassName === "UIGradient" ? instance._colorSequence : instance._strokeColor;
+            case "Rotation":
+                return instance._rotation ?? 0;
+            case "ColorSequence":
+                return instance._colorSequence;
 
             case "Thickness":
                 return instance._strokeThickness;

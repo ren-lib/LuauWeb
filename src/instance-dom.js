@@ -4,6 +4,7 @@ export function createInstanceDOM(className, nextFilterId) {
         view.Element = [
             "UICorner",
             "UIStroke",
+            "UIGradient",
             "UIListLayout",
             "UIPadding"
         ].includes(className)
