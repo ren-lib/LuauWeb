@@ -53,7 +53,8 @@ class WebInstance {
         this._richText = className === "TextLabel";
         this._textColor3 = "rgb(0, 0, 0)";
         this._textSize = 14;
-        this._font = "Arial";
+        this._textSpacing = 0;
+        this._font = "Manrope";
         this._textXAlignment = "Left";
         this._textYAlignment = "Center";
         this._image = "";
@@ -145,6 +146,7 @@ this._paddingRight = { Scale: 0, Offset: 0 };
         if (["TextLabel", "TextButton"].includes(className)) {
             this.Element.style.color = this._textColor3;
             this.Element.style.fontSize = `${this._textSize}px`;
+            this.Element.style.letterSpacing = `${this._textSpacing}px`;
             this.Element.style.textAlign = this._textXAlignment.toLowerCase();
             this.Element.style.verticalAlign = this._textYAlignment.toLowerCase();
         }

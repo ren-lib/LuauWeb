@@ -1,38 +1,36 @@
 local Text = require(`../UI/Text`)
-local Button = require(`../UI/TextButton`)
-local Container = require(`../UI/Container`)
+local PageContainer = require(`../UI/PageContainer`)
 
+local TweenService = game:GetService(`TweenService`)
 local LocalizationService = require(`../LocalizationService`)
-
 
 return function()
     local CoreUI = Instance.new(`ScreenGui`)
 
-    local CoreFrame = Container({
-        parentTo = CoreUI,
-        type = `image`,
-        containerProps = {
-            Image = Content.fromLocal(`Images/bg.jpg`), 
-            ImageColor3 = Color3.fromRGB(100,100,100),
-            ScaleType = Enum.ScaleType.Crop,
-        },
-        children = {
-            Text({
-                text = LocalizationService.Get(`welcome_title`),
-                textSize = Client.Device == `PC` and 40 or 25,
-                font = `MontserratBlack`,
-            }),
-            Text({
-                text = LocalizationService.Get(`welcome_subtitle`),
-                textSize = Client.Device == `PC` and 30 or 20,
-            }),
-        },
+    local Pattern = Instance.new(`ImageLabel`, {
+        Image = Content.fromLocal(`Images/main_page_pattern.png`), 
+        ImageColor3 = Color3.fromRGB(100,100,100),
+        ScaleType = Enum.ScaleType.Crop,
+        Size = UDim2.new(1,250,1,250),
+        AnchorPoint = Vector2.new(0,.5),
+        Position = UDim2.new(0,0,.5,0),
+        Parent = CoreUI,
     })
 
-    if not table.find(LocalizationService.SupportedLanguages, Client.Get(`PinnedLanguage`) or Client.Language) then
-        Text({
-            text = LocalizationService.Get(`language_not_supported`),
-        })
-    end
+    local PatternTween = TweenService:Create(
+        Pattern, 
+        TweenInfo.new(15, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true), 
+        {
+            AnchorPoint = Vector2.new(1,.5),
+            Position = UDim2.fromScale(1, .5),
+        }
+    )
 
+    PatternTween:Play()
+
+    PageContainer({
+        parentTo = CoreUI,
+        title = LocalizationService.Get(`welcome_title`),
+        subTitle = LocalizationService.Get(`welcome_subtitle`),
+    })
 end

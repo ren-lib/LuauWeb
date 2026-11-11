@@ -4,6 +4,11 @@ import { resolve } from 'node:path'
 
 export default defineConfig({
     base: '/',
+    server: {
+        headers: {
+            'Permissions-Policy': 'unload=self'
+        }
+    },
     plugins: [
         {
             name: 'github-pages-spa-fallback',

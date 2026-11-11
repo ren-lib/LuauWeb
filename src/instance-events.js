@@ -26,13 +26,18 @@ export function connectEvent(id, eventName, callback) {
     instance.Element.style.pointerEvents = "auto";
     const connectionId = ++NextConnectionId;
 
-    const handler = async () => {
+    const handler = () => {
         if (instance._destroyed) {
             return;
         }
 
         try {
-            await callback();
+            const Result = callback();
+            if (Result && typeof Result.then === "function") {
+                Promise.resolve(Result).catch(error => {
+                    console.error(`Error in ${eventName}:`, error);
+                });
+            }
         } catch (error) {
             console.error(`Error in ${eventName}:`, error);
         }

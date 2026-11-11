@@ -36,8 +36,8 @@ export function applyPosition(instance) {
         instance.Element.style.top =
             `calc(${instance._position.Y.Scale * 100}% + ${instance._position.Y.Offset}px)`;
 
-        instance.Element.style.transform =
-            `translate(${-instance._anchorPoint.X * 100}%, ${-instance._anchorPoint.Y * 100}%)`;
+        instance.Element.style.translate =
+            `${-instance._anchorPoint.X * 100}% ${-instance._anchorPoint.Y * 100}%`;
     
 }
 
@@ -85,6 +85,7 @@ export function updateAutomaticCanvasSize(instance) {
 
     let ContentRight = 0;
     let ContentBottom = 0;
+    const CanvasRect = instance.CanvasElement.getBoundingClientRect();
 
     for (const childId of instance._children) {
         const Child = instances.get(childId);
@@ -94,7 +95,6 @@ export function updateAutomaticCanvasSize(instance) {
         }
 
         const Rect = Child.Element.getBoundingClientRect();
-        const CanvasRect = instance.CanvasElement.getBoundingClientRect();
 
         ContentRight = Math.max(ContentRight, Rect.right - CanvasRect.left);
         ContentBottom = Math.max(ContentBottom, Rect.bottom - CanvasRect.top);
@@ -117,9 +117,12 @@ export function applyImage(instance) {
             return;
         }
 
+        const CurrentSource = instance.ImageElement.getAttribute("src") || "";
         if (instance._image) {
-            instance.ImageElement.src = instance._image;
-        } else {
+            if (CurrentSource !== instance._image) {
+                instance.ImageElement.src = instance._image;
+            }
+        } else if (CurrentSource) {
             instance.ImageElement.removeAttribute("src");
         }
 

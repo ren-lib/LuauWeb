@@ -2,7 +2,18 @@ local LocalizationService = {
     SupportedLanguages = {
         `ru`, `en`, 
     },
+    NotFullSupportedLanguages = {
+        --[[`ua`, --]]`da`,
+    },
     
+    [`supported_languages`] = {
+        ru = `Поддерживаемые языки`,
+        en = `Supported languages`,
+    },
+    [`not_full_supported_languages`] = {
+        ru = `Частично поддерживаемые языки`,
+        en = `Partially supported languages`,
+    },
     [`ru`] = {
         ru = `Русский`,
         en = `Russian`,
@@ -12,27 +23,20 @@ local LocalizationService = {
         en = `English`,
     },
     [`da`] = {
-        ru = `Датский [в планах]`,
-        en = `Danish [planned]`
+        ru = `Датский`,
+        en = `Danish`
     },
     [`ua`] = {
-        ru = `Украинский [в планах]`,
-        en = `Ukranian [planned]`,
-    },
-    [`language`] = {
-        ru = `Язык`,
-        en = `Language`,
-    },
-    [`language_not_supported`] = {
-        en = `Your language isn’t officially supported yet, so all content will be shown in English. You can view the supported languages anytime by clicking Language at the top.`,
+        ru = `Украинский`,
+        en = `Ukranian`,
     },
     [`404_title`] = {
-        ru = `Упс... Ошибка 404`,
-        en = `Oops... 404 error`,
+        ru = `УПС...`,
+        en = `OOPS...`,
     },
     [`404_subtitle`] = {
-        ru = `Кажется ты забрёл куда то не туда.`,
-        en = `Looks like you've wandered off the beaten path.`,
+        ru = `Страница {Client.PagePath} не существует, кажется ты забрёл куда то не туда.`,
+        en = `Page {Client.PagePath} not exits, looks like you've wandered off the beaten path.`,
     },
     [`404_backToMainPage`] = {
         ru = `Вернуться на Главную`,
@@ -43,25 +47,29 @@ local LocalizationService = {
         en = `Home`,
     },
     [`welcome_title`] = {
-        ru = `Привет`,
-        en =  `Hello`,
-        da = `Hej`,
+        ru = `ПРИВЕТ, МИР`,
+        en =  `HELLO, WORLD`,
+        da = `HEJ`,
+    },
+    [`about_website_button`] = {
+        ru = `О сайте`,
+        en = `About website`,
     },
     [`welcome_subtitle`] = {
-        ru = `тест`,
-        en = `test`,
+        ru = `Я создаю игры на <a href="https://roblox.com">Роблоксе</a>. Ты можешь знать меня под разными псевдонимами, например..\n<i>рен, ренатка, pearl, renTheTruth и так далее...</i>\n\nНа этом сайте ты можешь узнать больше обо мне: например, посмотреть <a href="http://renTheTruth.ru/portfolio">портфолио</a>, или <a href="http://renTheTruth.ru/blog">блог</a>.\nСайт все еще разрабатывается. Даже базовые страницы могут не существовать :)`,
+        en = `I make games on <a href="https://roblox.com">Roblox</a>. You might know me by different aliases, such as…\n<i>ren, renatka, pearl, renTheTruth, and so on…</i>\n\nOn this site, you can learn more about me - for example, view my <a href="http://renTheTruth.ru/portfolio">portfolio</a> or <a href="http://renTheTruth.ru/blog">blog</a>.\nThe site is still under development. Even basic pages might not exist yet :)`,
     },
     [`blog_button`] = {
         ru = `Блог`,
         en = `Blog`,
     },
     [`blog_title`] = {
-        ru = `Добро пожаловать в <b>Блог</b>`,
-        en = `Welcome to <b>Blog</b>`,
+        ru = `ДОБРО ПОЖАЛОВАТЬ В <b>БЛОГ</b>`,
+        en = `WELCOME TO <b>BLOG</b>`,
     },
     [`blog_subtitle`] = {
-        ru = `Тут время от времени я буду публиковать что нибудь. :0`,
-        en = `From time to time, I’ll post something here :0. All text will be shown in its original form (that is, in Russian).`,
+        ru = `Тут время от времени я буду публиковать что нибудь.`,
+        en = `From time to time, I’ll post something here. All text will be shown in its original form (that is, in Russian).`,
     },
 }
 

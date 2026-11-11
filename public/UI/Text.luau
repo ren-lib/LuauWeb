@@ -4,20 +4,27 @@ export type props = {
     textSize:number?,
     parentTo:Instance?,
     font:Font?,
-    --mode:string?,
+    props:{}?,
 }
 
 local function Text(props:props)
-    return Instance.new(`TextLabel`, {
+    local Properties = {
         TextColor3 = props.textColor or Color3.fromRGB(255, 255, 255),
         TextXAlignment = Enum.TextXAlignment.Center,
-        Font = props.font or `Montserrat`,
-        AutomaticSize = props.mode or Enum.AutomaticSize.Y,
-        Size = UDim2.fromScale(props.mode == `X` and 0 or 1, props.mode == `Y` and 0 or 1),
+        Font = props.font or `Manrope`,
+        AutomaticSize = Enum.AutomaticSize.Y,
+        Size = UDim2.fromScale(1,0),
         TextSize = props.textSize or 20,
         Text = props.text,
         Parent = props.parentTo
-    })
+    }
+
+    for PropertyName, Value in pairs(props.props or {}) do
+        Properties[PropertyName] = Value
+    end
+
+
+    return Instance.new(`TextLabel`, Properties)
 end
 
 return Text

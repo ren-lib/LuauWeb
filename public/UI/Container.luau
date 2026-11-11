@@ -1,14 +1,13 @@
 export type props = {
     listProps:{[string]:any}?,
     containerProps:{[string]:any}?,
-    children:{Instance},
+    children:{Instance}?,
 
-    noListChildren:{Instance}?,
-    noListProps:{[string]:any}?,
-
-    parentTo:Instance,
-    type:string?, -- {`image`, `frame`}, default - frame
+    animate:boolean?, -- default - false
+    parentTo:Instance?,
 }
+
+local TweenService = game:GetService(`TweenService`)
 
 local function Container(props:props)
     local ContainerProps = {
@@ -28,17 +27,18 @@ local function Container(props:props)
     for PropertyName, Value in pairs(props.listProps or {}) do
         ListProps[PropertyName] = Value
     end
+    table.insert(props.children, Instance.new(`UIListLayout`, ListProps))
 
-    local Container = Instance.new(props.type == `image` and `ImageLabel` or `Frame`, ContainerProps)
-    Instance.new(`UIListLayout`, ListProps).Parent = Container
-    for _, Child in ipairs(props.children) do
-        Child.Parent = Container
-    end
+    local Container:GuiObject = Instance.new(
+        `Frame`, 
+        ContainerProps,
+        props.children
+    )
 
-    if props.noListChildren then
-       Instance.new(`Frame`, {
-            Parent = Container,
-        }, props.noListProps or {}, props.noListChildren)
+    if props.animate then
+        Container.AnchorPoint = Vector2.new(.5,.5)
+        Container.Position = UDim2.new(.5,0,.5,45)
+        TweenService:Create(Container, TweenInfo.new(.5, Enum.EasingStyle.Exponential), {Position = UDim2.fromScale(.5, .5)}):Play()
     end
 
     return Container

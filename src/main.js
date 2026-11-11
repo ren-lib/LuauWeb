@@ -29,6 +29,11 @@ import {
     disconnectTweenEvent
 } from "./tween.js";
 
+// Disable the back-forward cache in local development while measuring memory.
+if (import.meta.env.DEV) {
+    window.addEventListener("unload", () => {});
+}
+
 const app = document.querySelector("#app");
 app.innerHTML = "";
 
@@ -66,10 +71,25 @@ output.style.cssText = `
 app.appendChild(output);
 
 const state = await LuauState.createAsync({});
+let RandomSeed = (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0;
+state.env.set("__MathRandom", (Min, Max) => {
+    RandomSeed = (Math.imul(RandomSeed, 1664525) + 1013904223) >>> 0;
+    const Value = RandomSeed / 0x100000000;
+    if (Min === undefined) return Value;
+    if (Max === undefined) {
+        Max = Min;
+        Min = 1;
+    }
+    Min = Math.ceil(Min);
+    Max = Math.floor(Max);
+    if (Max < Min) throw new Error("math.random: empty interval");
+    return Min + Math.floor(Value * (Max - Min + 1));
+}, true);
 state.env.set('__PagePath', window.location.pathname, true);
 
 state.env.set('__Navigate', (Url) => {
-    window.location.href = Url;
+    const Target = new URL(String(Url), `${window.location.origin}/`);
+    window.location.href = Target.href;
 }, true);
 state.env.set("__TaskWait", async (Seconds = 0) => {
     const Start = performance.now();
@@ -79,6 +99,21 @@ state.env.set("__TaskWait", async (Seconds = 0) => {
     });
 
     return (performance.now() - Start) / 1000;
+}, true);
+let TaskRunner = null;
+const PendingTaskRuns = [];
+state.env.set("__TaskSchedule", (TaskId, Seconds = 0) => {
+    const ScheduledAt = performance.now();
+    setTimeout(() => {
+        const Elapsed = (performance.now() - ScheduledAt) / 1000;
+        if (!TaskRunner) {
+            PendingTaskRuns.push([TaskId, Elapsed]);
+            return;
+        }
+        Promise.resolve(TaskRunner(TaskId, Elapsed)).catch(error => {
+            console.error("task.spawn:", error);
+        });
+    }, Math.max(0, Number(Seconds) || 0) * 1000);
 }, true);
 
 state.env.set("__InstanceNew", createInstance, true);
@@ -258,9 +293,17 @@ const IsMobile = navigator.userAgentData?.mobile ??
 
 let ClientCursorX = 0;
 let ClientCursorY = 0;
-window.addEventListener("pointermove", event => {
+const UpdateClientCursorPosition = event => {
     ClientCursorX = event.clientX;
     ClientCursorY = event.clientY;
+};
+window.addEventListener("pointermove", UpdateClientCursorPosition, { passive: true });
+window.addEventListener("pointerdown", UpdateClientCursorPosition, { passive: true });
+window.addEventListener("touchstart", event => {
+    const Touch = event.changedTouches[0];
+    if (Touch) {
+        UpdateClientCursorPosition(Touch);
+    }
 }, { passive: true });
 state.env.set("__GetClientScreenWidth", () => window.innerWidth, true);
 state.env.set("__GetClientScreenHeight", () => window.innerHeight, true);
@@ -646,8 +689,12 @@ PlaybackState = {
             },
 
             Font = {
-                Arial = \`Arial\`,
-                ArialBold = \`ArialBold\`,
+                Manrope = \`Manrope\`,
+                ManropeMedium = \`ManropeMedium\`,
+                ManropeSemibold = \`ManropeSemibold\`,
+                ManropeBold = \`ManropeBold\`,
+                ManropeExtraBold = \`ManropeExtraBold\`,
+                ManropeBlack = \`ManropeBlack\`,
                 SourceSans = \`SourceSans\`,
                 SourceSansBold = \`SourceSansBold\`,
                 Montserrat = \`Montserrat\`,
@@ -818,7 +865,14 @@ PlaybackState = {
                 if Property == "ScreenSize" then
                     return Vector2.new(__GetClientScreenWidth(), __GetClientScreenHeight())
                 elseif Property == "CursorPosition" then
-                    return Vector2.new(__GetClientCursorX(), __GetClientCursorY())
+                    local ScreenWidth = __GetClientScreenWidth()
+                    local ScreenHeight = __GetClientScreenHeight()
+                    return UDim2.new(
+                        ScreenWidth > 0 and __GetClientCursorX() / ScreenWidth or 0,
+                        0,
+                        ScreenHeight > 0 and __GetClientCursorY() / ScreenHeight or 0,
+                        __GetClientCursorY()
+                    )
                 end
             end
         })
@@ -841,17 +895,72 @@ end
         end
 
         print = __Print
+
+        local Math = table.clone(math)
+        Math.random = __MathRandom
+        math = Math
        
         task = {}
 
+local TaskThreads = {}
+local NextTaskId = 0
+
 function task.wait(Seconds)
-    return __TaskWait(Seconds or 0)
+    Seconds = math.max(tonumber(Seconds) or 0, 0)
+    local Thread, IsMainThread = coroutine.running()
+    if Thread and not IsMainThread then
+        return coroutine.yield(Seconds)
+    end
+    return __TaskWait(Seconds)
+end
+
+function task.spawn(Callback, ...)
+    assert(type(Callback) == "function", "task.spawn expects a function")
+
+    local Arguments = table.pack(...)
+    NextTaskId += 1
+    local TaskId = NextTaskId
+    local Thread = coroutine.create(function()
+        Callback(table.unpack(Arguments, 1, Arguments.n))
+    end)
+    local Success, Delay = coroutine.resume(Thread)
+    if not Success then
+        warn("task.spawn:", Delay)
+        return Thread
+    end
+
+    if coroutine.status(Thread) ~= "dead" then
+        TaskThreads[TaskId] = Thread
+        __TaskSchedule(TaskId, math.max(tonumber(Delay) or 0, 0))
+    end
+    return Thread
+end
+
+function task._resumeTask(TaskId, Elapsed)
+    local Thread = TaskThreads[TaskId]
+    if not Thread then return end
+
+    local Success, Delay = coroutine.resume(Thread, Elapsed)
+    if not Success then
+        TaskThreads[TaskId] = nil
+        warn("task.spawn:", Delay)
+    elseif coroutine.status(Thread) == "dead" then
+        TaskThreads[TaskId] = nil
+    else
+        __TaskSchedule(TaskId, math.max(tonumber(Delay) or 0, 0))
+    end
 end
 
         ${source}
     `, "main.luau", true);
 
     await run();
+    TaskRunner = state.loadstring("task._resumeTask(...) ", "task.scheduler", true);
+    for (const [TaskId, Elapsed] of PendingTaskRuns.splice(0)) {
+        Promise.resolve(TaskRunner(TaskId, Elapsed)).catch(error => {
+            console.error("task.spawn:", error);
+        });
+    }
 } catch (error) {
     output.style.display = "block";
     output.textContent += "ERROR: " + error;

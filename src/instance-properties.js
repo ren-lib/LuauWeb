@@ -2,10 +2,14 @@ import { renderDecorations, applyListLayout, applyUIPadding } from './layout.js'
 import { renderText } from './rich-text.js';
 
 const FontStyles = {
-    Arial: ["Arial, sans-serif", 400],
-    ArialBold: ["Arial, sans-serif", 700],
-    SourceSans: ['"Source Sans 3", Arial, sans-serif', 400],
-    SourceSansBold: ['"Source Sans 3", Arial, sans-serif', 700],
+    Manrope: ['"Manrope", sans-serif', 400],
+    ManropeMedium: ['"Manrope", sans-serif', 500],
+    ManropeSemibold: ['"Manrope", sans-serif', 700],
+    ManropeBold: ['"Manrope", sans-serif', 700],
+    ManropeExtraBold: ['"Manrope", sans-serif', 800],
+    ManropeBlack: ['"Manrope", sans-serif', 900],
+    SourceSans: ['"Source Sans 3", sans-serif', 400],
+    SourceSansBold: ['"Source Sans 3", sans-serif', 700],
     Montserrat: ['"Montserrat", sans-serif', 400],
     MontserratMedium: ['"Montserrat", sans-serif', 500],
     MontserratSemibold: ['"Montserrat", sans-serif', 600],
@@ -100,6 +104,11 @@ case "ScrollBarThickness":
                 instance.applyPosition();
                 break;
 
+            case "Rotation":
+                instance._rotation = Number(value) || 0;
+                if (instance.Element) instance.Element.style.rotate = `${instance._rotation}deg`;
+                break;
+
             case "AnchorPoint":
                 instance._anchorPoint = value;
                 instance.applyPosition();
@@ -168,7 +177,7 @@ case "ScrollBarThickness":
                 break;
 
             case "Font": {
-                const Font = FontStyles[value] || FontStyles.Arial;
+                const Font = FontStyles[value] || FontStyles.Manrope;
                 instance._font = value;
 
                 instance.Element.style.fontFamily = Font[0];
@@ -191,6 +200,11 @@ case "ScrollBarThickness":
             case "TextSize":
                 instance._textSize = Number(value);
                 instance.Element.style.fontSize = `${value}px`;
+                instance._parent?.scheduleAutomaticSize();
+                break;
+            case "TextSpacing":
+                instance._textSpacing = Number(value) || 0;
+                instance.Element.style.letterSpacing = `${instance._textSpacing}px`;
                 instance._parent?.scheduleAutomaticSize();
                 break;
 case "TextXAlignment":
@@ -346,6 +360,9 @@ case "ScrollBarThickness":
 
             case "TextSize":
                 return instance._textSize;
+
+            case "TextSpacing":
+                return instance._textSpacing;
 
             case "Font":
                 return instance._font;

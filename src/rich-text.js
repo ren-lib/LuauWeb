@@ -8,7 +8,7 @@ export function renderText(instance) {
     }
 
     const Parsed = new DOMParser().parseFromString(instance._text, 'text/html');
-    const Allowed = new Set(['B', 'I', 'U', 'S', 'STRONG', 'EM', 'BR', 'FONT']);
+    const Allowed = new Set(['A', 'B', 'I', 'U', 'S', 'STRONG', 'EM', 'BR', 'FONT']);
 
     const appendNodes = (source, target) => {
         for (const Node of source.childNodes) {
@@ -23,7 +23,23 @@ export function renderText(instance) {
             }
 
             const Safe = document.createElement(Node.tagName.toLowerCase());
-            if (Node.tagName === 'FONT') {
+            if (Node.tagName === 'A') {
+                const Href = Node.getAttribute('href');
+                if (Href) {
+                    try {
+                        const Url = new URL(Href, document.baseURI);
+                        if (['http:', 'https:', 'mailto:'].includes(Url.protocol)) {
+                            Safe.href = Url.href;
+                            Safe.style.color = 'inherit';
+                            Safe.style.textDecoration = 'underline';
+                            Safe.style.cursor = 'pointer';
+                            Safe.style.pointerEvents = 'auto';
+                        }
+                    } catch {
+                        // Invalid URLs remain plain linked text.
+                    }
+                }
+            } else if (Node.tagName === 'FONT') {
                 const Color = Node.getAttribute('color');
                 if (Color) Safe.style.color = Color;
                 const Face = Node.getAttribute('face');

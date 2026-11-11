@@ -65,18 +65,7 @@ export function applyListLayout(parent) {
         Content.style.gap = "";
 
         for (const childId of parent._children) {
-            const Child = instances.get(childId);
-
-            if (!Child?.Element) {
-                continue;
-            }
-
-            Child.Element.style.position = "absolute";
-            Child.Element.style.flexShrink = "";
-            Child.Element.style.flexGrow = "";
-            Child.Element.style.minWidth = "";
-            Child.Element.style.minHeight = "";
-            Child.applyPosition();
+            applyListLayoutChild(parent, instances.get(childId));
         }
 
         return;
@@ -115,27 +104,38 @@ export function applyListLayout(parent) {
     Content.style.alignItems = Align[CrossAlignment] || "flex-start";
 
     for (const childId of parent._children) {
-        const Child = instances.get(childId);
-
-        if (!Child?.Element) {
-            continue;
-        }
-
-        Child.Element.style.position = "relative";
-        Child.Element.style.left = "auto";
-        Child.Element.style.top = "auto";
-        Child.Element.style.transform = "none";
-        Child.Element.style.flexShrink = "0";
-        Child.Element.style.flexGrow = "0";
-        Child.Element.style.minWidth = "0";
-        Child.Element.style.minHeight = "0";
-        Child.Element.style.order = Layout._sortOrder === "LayoutOrder"
-            ? Child._layoutOrder
-            : 0;
+        applyListLayoutChild(parent, instances.get(childId));
     }
 
     applyListGap(parent);
     parent.scheduleAutomaticSize();
+}
+
+export function applyListLayoutChild(parent, child) {
+    if (!parent?.Element || !child?.Element) return;
+
+    const Layout = parent._uiListLayout;
+    if (!Layout || Layout._destroyed) {
+        child.Element.style.position = "absolute";
+        child.Element.style.flexShrink = "";
+        child.Element.style.flexGrow = "";
+        child.Element.style.minWidth = "";
+        child.Element.style.minHeight = "";
+        child.applyPosition();
+        return;
+    }
+
+    child.Element.style.position = "relative";
+    child.Element.style.left = "auto";
+    child.Element.style.top = "auto";
+    child.Element.style.transform = "none";
+    child.Element.style.flexShrink = "0";
+    child.Element.style.flexGrow = "0";
+    child.Element.style.minWidth = "0";
+    child.Element.style.minHeight = "0";
+    child.Element.style.order = Layout._sortOrder === "LayoutOrder"
+        ? child._layoutOrder
+        : 0;
 }
 
 export function applyListGap(parent) {
@@ -172,17 +172,32 @@ export function applyUIPadding(parent) {
     const Width = parent.Element.clientWidth;
     const Height = parent.Element.clientHeight;
 
-    Content.style.paddingTop =
-        `${getUDimValue(Padding._paddingTop, Height)}px`;
+    if (parent.ImageElement) {
+        Content.style.padding = "";
+        const Top = getUDimValue(Padding._paddingTop, Height);
+        const Bottom = getUDimValue(Padding._paddingBottom, Height);
+        const Left = getUDimValue(Padding._paddingLeft, Width);
+        const Right = getUDimValue(Padding._paddingRight, Width);
 
-    Content.style.paddingBottom =
-        `${getUDimValue(Padding._paddingBottom, Height)}px`;
+        parent.ImageElement.style.top = `${Top}px`;
+        parent.ImageElement.style.left = `${Left}px`;
+        parent.ImageElement.style.right = "auto";
+        parent.ImageElement.style.bottom = "auto";
+        parent.ImageElement.style.width = `calc(100% - ${Left + Right}px)`;
+        parent.ImageElement.style.height = `calc(100% - ${Top + Bottom}px)`;
+    } else {
+        Content.style.paddingTop =
+            `${getUDimValue(Padding._paddingTop, Height)}px`;
 
-    Content.style.paddingLeft =
-        `${getUDimValue(Padding._paddingLeft, Width)}px`;
+        Content.style.paddingBottom =
+            `${getUDimValue(Padding._paddingBottom, Height)}px`;
 
-    Content.style.paddingRight =
-        `${getUDimValue(Padding._paddingRight, Width)}px`;
+        Content.style.paddingLeft =
+            `${getUDimValue(Padding._paddingLeft, Width)}px`;
+
+        Content.style.paddingRight =
+            `${getUDimValue(Padding._paddingRight, Width)}px`;
+    }
 
     if (!parent._paddingObserver && typeof ResizeObserver !== "undefined") {
         parent._paddingObserver = new ResizeObserver(() => {

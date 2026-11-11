@@ -1,6 +1,7 @@
 import { getTweenProperty, setProperty } from "./instance.js";
 
 const Tweens = new Map();
+const TweensByInstance = new Map();
 let NextTweenId = 0;
 let NextTweenConnectionId = 0;
 
@@ -101,6 +102,19 @@ function interpolateValue(Start, Goal, Alpha) {
     }
 
     throw new Error("Tween: unsupported property value type");
+}
+
+function interpolateProperty(property, Start, Goal, Alpha) {
+    if (property === "Font") {
+        if (typeof Start !== "string" || typeof Goal !== "string") {
+            throw new Error("Tween: Font values must be font names");
+        }
+
+        // Font is a discrete style, so switch it at the midpoint of the tween.
+        return Alpha < 0.5 ? Start : Goal;
+    }
+
+    return interpolateValue(Start, Goal, Alpha);
 }
 
 function easeIn(style, Value) {
@@ -231,7 +245,7 @@ function applyProgress(tween, progress) {
         );
 
         for (const [Property, Goal] of Object.entries(tween.goals)) {
-            const Value = interpolateValue(tween.startValues[Property], Goal, Alpha);
+            const Value = interpolateProperty(Property, tween.startValues[Property], Goal, Alpha);
             applyTweenValue(tween, Property, Value);
         }
 
@@ -354,7 +368,7 @@ export function createTween(instanceId, info, goals) {
             throw new Error(`TweenService: unsupported property ${Property}`);
         }
 
-        interpolateValue(cloneValue(Start), cloneValue(Goal), 0);
+        interpolateProperty(Property, cloneValue(Start), cloneValue(Goal), 0);
     }
 
     const id = ++NextTweenId;
@@ -378,6 +392,13 @@ export function createTween(instanceId, info, goals) {
         frame: null,
         connections: new Map()
     });
+
+    let InstanceTweens = TweensByInstance.get(instanceId);
+    if (!InstanceTweens) {
+        InstanceTweens = new Set();
+        TweensByInstance.set(instanceId, InstanceTweens);
+    }
+    InstanceTweens.add(id);
 
     return id;
 }
@@ -471,6 +492,21 @@ export function destroyTween(id) {
 
     tween.connections.clear();
     Tweens.delete(id);
+
+    const InstanceTweens = TweensByInstance.get(tween.instanceId);
+    InstanceTweens?.delete(id);
+    if (InstanceTweens?.size === 0) {
+        TweensByInstance.delete(tween.instanceId);
+    }
+}
+
+export function destroyTweensForInstance(instanceId) {
+    const InstanceTweens = TweensByInstance.get(instanceId);
+    if (!InstanceTweens) return;
+
+    for (const tweenId of [...InstanceTweens]) {
+        destroyTween(tweenId);
+    }
 }
 
 export function getTweenState(id) {

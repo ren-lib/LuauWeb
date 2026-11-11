@@ -1,5 +1,5 @@
 import { instances } from './instance-store.js';
-import { renderDecorations, getContentElement, applyListLayout, applyUIPadding } from './layout.js';
+import { renderDecorations, getContentElement, applyListLayout, applyListLayoutChild, applyUIPadding } from './layout.js';
 
 export function setParent(id, value) {
     const instance = instances.get(id);
@@ -93,7 +93,7 @@ export function setParent(id, value) {
             getContentElement(parent).appendChild(instance.Element);
 
             if (parent._uiListLayout) {
-                applyListLayout(parent);
+                applyListLayoutChild(parent, instance);
             }
         }
 
