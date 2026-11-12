@@ -60,6 +60,8 @@ export function destroyInstance(id) {
 
     instance._paddingObserver?.disconnect();
     instance._paddingObserver = null;
+    instance._cornerResizeObserver?.disconnect();
+    instance._cornerResizeObserver = null;
     instance._canvasResizeObserver?.disconnect();
     instance._canvasResizeObserver = null;
     if (instance._scrollPositionHandler) {

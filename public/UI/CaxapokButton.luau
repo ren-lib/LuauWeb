@@ -32,7 +32,7 @@ local function CaxapokButton(props:props)
             PaddingBottom = UDim.new(0,2),
         }),
         Instance.new(`UICorner`, {
-            CornerRadius = UDim.new(.25,0)
+            CornerRadius = UDim.new(.25,0),
         })
     })
     

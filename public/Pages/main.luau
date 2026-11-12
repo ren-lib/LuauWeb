@@ -1,5 +1,5 @@
-local Text = require(`../UI/Text`)
 local PageContainer = require(`../UI/PageContainer`)
+local SocialButton = require(`../UI/SocialButton`)
 
 local TweenService = game:GetService(`TweenService`)
 local LocalizationService = require(`../LocalizationService`)
@@ -32,5 +32,23 @@ return function()
         parentTo = CoreUI,
         title = LocalizationService.Get(`welcome_title`),
         subTitle = LocalizationService.Get(`welcome_subtitle`),
+        listProps = {
+            HorizontalAlignment = Enum.HorizontalAlignment.Left,
+            Wraps = true,
+            Padding = UDim.new(0,7),
+            FillDirection = Enum.FillDirection.Horizontal,
+        },
+        children = {
+            SocialButton({
+                image = Content.fromLocal(`Images/roblox_icon.png`),
+                bgColor = Color3.fromHex(`335fff`),
+                link = `https://www.roblox.com/users/7982667388/profile`,
+            }),
+            SocialButton({
+                image = Content.fromLocal(`Images/roblox_studio_icon.png`),
+                bgColor = Color3.fromHex(`335fff`),
+                link = `https://devforum.roblox.com/u/renthetruth`,
+            })
+        },
     })
 end

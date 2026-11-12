@@ -23,6 +23,7 @@ local function Button(props:props)
         Parent = props.parentTo
     }, {
         Instance.new(`UIPadding`, {
+            ApplyOnImage = true,
             PaddingLeft = UDim.new(0, 10),
             PaddingRight = UDim.new(0, 10),
             PaddingTop = UDim.new(0, 5),

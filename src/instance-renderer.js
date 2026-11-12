@@ -218,6 +218,23 @@ export function updateAutomaticSize(instance) {
             Height = Math.max(Height, Rect.bottom - ParentRect.top);
         }
 
+        const Padding = instance._uiPadding;
+        const LeftPadding = Padding
+            ? getUDimValue(Padding._paddingLeft, ParentRect.width)
+            : 0;
+        const RightPadding = Padding
+            ? getUDimValue(Padding._paddingRight, ParentRect.width)
+            : 0;
+        const TopPadding = Padding
+            ? getUDimValue(Padding._paddingTop, ParentRect.height)
+            : 0;
+        const BottomPadding = Padding
+            ? getUDimValue(Padding._paddingBottom, ParentRect.height)
+            : 0;
+
+        Width = Math.max(Width + RightPadding, LeftPadding + RightPadding);
+        Height = Math.max(Height + BottomPadding, TopPadding + BottomPadding);
+
         if (AutoX) {
             instance.Element.style.width = `${Math.ceil(Math.max(0, Width))}px`;
         }

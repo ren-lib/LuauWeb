@@ -55,9 +55,11 @@ export const INSTANCE_PROPERTY_SPECS = Object.freeze({
     PaddingBottom: { type: 'UDim', default: { Scale: 0, Offset: 0 }, classNames: ['UIPadding'] },
     PaddingLeft: { type: 'UDim', default: { Scale: 0, Offset: 0 }, classNames: ['UIPadding'] },
     PaddingRight: { type: 'UDim', default: { Scale: 0, Offset: 0 }, classNames: ['UIPadding'] },
+    ApplyOnImage: { type: 'boolean', default: true, classNames: ['UIPadding'] },
     HorizontalAlignment: { type: 'Enum.HorizontalAlignment', default: 'Left', classNames: ['UIListLayout'] },
     VerticalAlignment: { type: 'Enum.VerticalAlignment', default: 'Top', classNames: ['UIListLayout'] },
-    SortOrder: { type: 'Enum.SortOrder', default: 'LayoutOrder', classNames: ['UIListLayout'] }
+    SortOrder: { type: 'Enum.SortOrder', default: 'LayoutOrder', classNames: ['UIListLayout'] },
+    Wraps: { type: 'boolean', default: false, classNames: ['UIListLayout'] }
 })
 
 export function getInstancePropertySpec(property) {

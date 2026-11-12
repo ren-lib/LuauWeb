@@ -277,6 +277,11 @@ case "TextYAlignment":
                 instance._sortOrder = value;
                 instance._parent && applyListLayout(instance._parent);
                 break;
+
+            case "Wraps":
+                instance._wraps = Boolean(value);
+                instance._parent && applyListLayout(instance._parent);
+                break;
 case "PaddingTop":
     instance._paddingRadius = null;
     instance._paddingTop = value;
@@ -298,6 +303,10 @@ case "PaddingLeft":
 case "PaddingRight":
     instance._paddingRadius = null;
     instance._paddingRight = value;
+    instance._parent && applyUIPadding(instance._parent);
+    break;
+case "ApplyOnImage":
+    instance._applyOnImage = Boolean(value);
     instance._parent && applyUIPadding(instance._parent);
     break;
     case "PaddingRadius":
@@ -433,6 +442,9 @@ case "ScrollBarThickness":
             case "SortOrder":
                 return instance._sortOrder;
 
+            case "Wraps":
+                return instance._wraps;
+
             case "PaddingTop":
                 return instance._paddingTop;
 
@@ -444,6 +456,9 @@ case "ScrollBarThickness":
 
             case "PaddingRight":
                 return instance._paddingRight;
+
+            case "ApplyOnImage":
+                return instance._applyOnImage;
         }
 
         return undefined;

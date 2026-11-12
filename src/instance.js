@@ -97,6 +97,7 @@ this._backgroundTransparency = className === "ScreenGui" ? 1 : 0;
         this._strokeTransparency = 0;
 
         this._uiCorner = null;
+        this._cornerResizeObserver = null;
         this._uiStroke = null;
         this._uiListLayout = null;
         this._uiPadding = null;
@@ -107,12 +108,14 @@ this._backgroundTransparency = className === "ScreenGui" ? 1 : 0;
         this._horizontalAlignment = "Left";
         this._verticalAlignment = "Top";
         this._sortOrder = "LayoutOrder";
+        this._wraps = false;
 
        this._paddingRadius = { Scale: 0, Offset: 0 };
 this._paddingTop = { Scale: 0, Offset: 0 };
 this._paddingBottom = { Scale: 0, Offset: 0 };
 this._paddingLeft = { Scale: 0, Offset: 0 };
 this._paddingRight = { Scale: 0, Offset: 0 };
+this._applyOnImage = true;
 
         if (!this.Element) {
             return;

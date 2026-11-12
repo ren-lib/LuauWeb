@@ -14,7 +14,7 @@ return function()
             Instance.new(`ImageLabel`, {
                 LayoutOrder = -100,
                 Size = UDim2.fromOffset(150, 150),
-                Image = Content.fromLocal(`Images/roblox_studio_icon.svg`)
+                Image = Content.fromLocal(`Images/roblox_studio_icon.png`)
             })
         }
     })

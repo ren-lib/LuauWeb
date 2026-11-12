@@ -1,12 +1,42 @@
 import { instances } from './instance-store.js';
 import { getUDimValue, applyOpacity } from './instance-utils.js';
 
+function applyCornerRadius(parent) {
+    const Corner = parent._uiCorner;
+    if (Corner && !Corner._destroyed) {
+        const Radius = Corner._cornerRadius;
+        const Rect = parent.Element.getBoundingClientRect();
+        const MinSize = Math.min(Rect.width, Rect.height);
+        const RadiusValue = Math.max(0, Radius.Scale * MinSize + Radius.Offset);
+        const RadiusStyle = `${RadiusValue}px`;
+
+        parent.Element.style.borderRadius = RadiusStyle;
+        if (parent.ImageElement) {
+            parent.ImageElement.style.borderRadius = RadiusStyle;
+        }
+
+        if (!parent._cornerResizeObserver && typeof ResizeObserver !== "undefined") {
+            parent._cornerResizeObserver = new ResizeObserver(() => {
+                applyCornerRadius(parent);
+            });
+            parent._cornerResizeObserver.observe(parent.Element);
+        }
+        return;
+    }
+
+    parent.Element.style.borderRadius = "";
+    if (parent.ImageElement) {
+        parent.ImageElement.style.borderRadius = "";
+    }
+    parent._cornerResizeObserver?.disconnect();
+    parent._cornerResizeObserver = null;
+}
+
 export function renderDecorations(parent) {
     if (!parent?.Element) {
         return;
     }
 
-    const Corner = parent._uiCorner;
     const Stroke = parent._uiStroke;
     const Gradient = parent._uiGradient;
     if (Gradient && !Gradient._destroyed && Gradient._colorSequence?.length) {
@@ -19,19 +49,7 @@ export function renderDecorations(parent) {
         parent.Element.style.backgroundBlendMode = "";
     }
 
-    if (Corner && !Corner._destroyed) {
-        const Radius = Corner._cornerRadius;
-        const Rect = parent.Element.getBoundingClientRect();
-        const MinSize = Math.min(Rect.width, Rect.height);
-        const RadiusValue = Math.max(
-            0,
-            Radius.Scale * MinSize + Radius.Offset
-        );
-
-        parent.Element.style.borderRadius = `${RadiusValue}px`;
-    } else {
-        parent.Element.style.borderRadius = "";
-    }
+    applyCornerRadius(parent);
 
     if (Stroke && !Stroke._destroyed && Stroke._strokeThickness > 0) {
         parent.Element.style.outline =
@@ -62,6 +80,8 @@ export function applyListLayout(parent) {
         Content.style.flexDirection = "";
         Content.style.justifyContent = "";
         Content.style.alignItems = "";
+        Content.style.alignContent = "";
+        Content.style.flexWrap = "";
         Content.style.gap = "";
 
         for (const childId of parent._children) {
@@ -75,6 +95,7 @@ export function applyListLayout(parent) {
 
     Content.style.display = "flex";
     Content.style.flexDirection = Horizontal ? "row" : "column";
+    Content.style.flexWrap = Layout._wraps ? "wrap" : "nowrap";
 
     const MainAlignment = Horizontal
         ? Layout._horizontalAlignment
@@ -102,6 +123,7 @@ export function applyListLayout(parent) {
 
     Content.style.justifyContent = Justify[MainAlignment] || "flex-start";
     Content.style.alignItems = Align[CrossAlignment] || "flex-start";
+    Content.style.alignContent = Align[CrossAlignment] || "flex-start";
 
     for (const childId of parent._children) {
         applyListLayoutChild(parent, instances.get(childId));
@@ -164,6 +186,11 @@ export function applyUIPadding(parent) {
 
     if (!Padding || Padding._destroyed) {
         Content.style.padding = "";
+        if (parent.ImageElement) {
+            parent.ImageElement.style.inset = "0";
+            parent.ImageElement.style.width = "100%";
+            parent.ImageElement.style.height = "100%";
+        }
         parent._paddingObserver?.disconnect();
         parent._paddingObserver = null;
         return;
@@ -171,14 +198,15 @@ export function applyUIPadding(parent) {
 
     const Width = parent.Element.clientWidth;
     const Height = parent.Element.clientHeight;
+    const Top = getUDimValue(Padding._paddingTop, Height);
+    const Bottom = getUDimValue(Padding._paddingBottom, Height);
+    const Left = getUDimValue(Padding._paddingLeft, Width);
+    const Right = getUDimValue(Padding._paddingRight, Width);
 
-    if (parent.ImageElement) {
+    const ApplyOnImage = Padding._applyOnImage !== false;
+
+    if (parent.ImageElement && ApplyOnImage) {
         Content.style.padding = "";
-        const Top = getUDimValue(Padding._paddingTop, Height);
-        const Bottom = getUDimValue(Padding._paddingBottom, Height);
-        const Left = getUDimValue(Padding._paddingLeft, Width);
-        const Right = getUDimValue(Padding._paddingRight, Width);
-
         parent.ImageElement.style.top = `${Top}px`;
         parent.ImageElement.style.left = `${Left}px`;
         parent.ImageElement.style.right = "auto";
@@ -186,17 +214,16 @@ export function applyUIPadding(parent) {
         parent.ImageElement.style.width = `calc(100% - ${Left + Right}px)`;
         parent.ImageElement.style.height = `calc(100% - ${Top + Bottom}px)`;
     } else {
-        Content.style.paddingTop =
-            `${getUDimValue(Padding._paddingTop, Height)}px`;
+        Content.style.paddingTop = `${Top}px`;
+        Content.style.paddingBottom = `${Bottom}px`;
+        Content.style.paddingLeft = `${Left}px`;
+        Content.style.paddingRight = `${Right}px`;
 
-        Content.style.paddingBottom =
-            `${getUDimValue(Padding._paddingBottom, Height)}px`;
-
-        Content.style.paddingLeft =
-            `${getUDimValue(Padding._paddingLeft, Width)}px`;
-
-        Content.style.paddingRight =
-            `${getUDimValue(Padding._paddingRight, Width)}px`;
+        if (parent.ImageElement) {
+            parent.ImageElement.style.inset = "0";
+            parent.ImageElement.style.width = "100%";
+            parent.ImageElement.style.height = "100%";
+        }
     }
 
     if (!parent._paddingObserver && typeof ResizeObserver !== "undefined") {
