@@ -6,10 +6,19 @@ local LocalizationService = require(`../LocalizationService`)
 
 return function()
     local CoreUI = Instance.new(`ScreenGui`)
-
+    
+    Instance.new(`ImageLabel`, {
+        Size = UDim2.fromScale(1, 1),
+        ScaleType = Enum.ScaleType.Crop,
+        ImageColor3 = Color3.fromRGB(126, 126, 126),
+        Image = Content.fromLocal(`Images/main_page_{math.random(1,7)}.png`),
+        Parent = CoreUI,
+    })
+    
     local Pattern = Instance.new(`ImageLabel`, {
         Image = Content.fromLocal(`Images/main_page_pattern.png`), 
-        ImageColor3 = Color3.fromRGB(100,100,100),
+        BackgroundTransparency = 1,
+        ImageColor3 = Color3.fromRGB(0, 0, 0),
         ScaleType = Enum.ScaleType.Crop,
         Size = UDim2.new(1,250,1,250),
         AnchorPoint = Vector2.new(0,.5),
