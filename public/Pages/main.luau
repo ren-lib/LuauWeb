@@ -11,7 +11,7 @@ return function()
         Size = UDim2.fromScale(1, 1),
         ScaleType = Enum.ScaleType.Crop,
         ImageColor3 = Color3.fromRGB(126, 126, 126),
-        Image = Content.fromLocal(`Images/main_page_{math.random(1,8)}.png`),
+        Image = Content.fromLocal(`Images/main_page_{math.random(1,10)}.png`),
         Parent = CoreUI,
     })
     
